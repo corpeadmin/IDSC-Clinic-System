@@ -9,6 +9,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 from .models import Student, HealthRecord
 from .serializers import (
@@ -18,6 +20,73 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Students'],
+        summary="List all students",
+        description="Retrieve a list of all students with optional search and filtering by course, section, or sex.",
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search keyword matching first name, last name, course, section, or student ID'
+            ),
+            OpenApiParameter(
+                name='course',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Filter by degree program / course (case-insensitive exact match)'
+            ),
+            OpenApiParameter(
+                name='section',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Filter by section (case-insensitive exact match)'
+            ),
+            OpenApiParameter(
+                name='sex',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                enum=['Male', 'Female', 'Other'],
+                description="Filter by sex (Male, Female, Other)"
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        tags=['Students'],
+        summary="Retrieve student details",
+        description="Retrieve complete details for a specific student by student_id, including full nested health records history.",
+        responses={200: StudentDetailSerializer},
+    ),
+    create=extend_schema(
+        tags=['Students'],
+        summary="Create a new student",
+        description="Register a new student record in the IDSC Clinic System.",
+        request=StudentSerializer,
+        responses={201: StudentSerializer},
+    ),
+    update=extend_schema(
+        tags=['Students'],
+        summary="Update a student",
+        description="Update all fields of an existing student record.",
+        request=StudentSerializer,
+        responses={200: StudentSerializer},
+    ),
+    partial_update=extend_schema(
+        tags=['Students'],
+        summary="Partially update a student",
+        description="Partially update one or more fields of an existing student record.",
+        request=StudentSerializer,
+        responses={200: StudentSerializer},
+    ),
+    destroy=extend_schema(
+        tags=['Students'],
+        summary="Delete a student",
+        description="Delete an existing student and all associated health records.",
+        responses={204: None},
+    ),
+)
 class StudentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing Students.
@@ -69,6 +138,21 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @extend_schema(
+        methods=['GET'],
+        tags=['Students'],
+        summary="List health records for a student",
+        description="Retrieve all health records and clinic consultations for a specific student, ordered by visit date descending.",
+        responses={200: HealthRecordSerializer(many=True)},
+    )
+    @extend_schema(
+        methods=['POST'],
+        tags=['Students'],
+        summary="Create health record for a student",
+        description="Create a new clinic consultation / health record for the specified student.",
+        request=HealthRecordSerializer,
+        responses={201: HealthRecordSerializer},
+    )
     @action(detail=True, methods=['get', 'post'], url_path='health-records')
     def health_records(self, request, student_id=None):
         """
@@ -95,6 +179,67 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Health Records'],
+        summary="List all health records",
+        description="Retrieve a list of all health records with optional filtering by student ID, blood type, or search keyword.",
+        parameters=[
+            OpenApiParameter(
+                name='student_id',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Filter health records for a specific student by student ID'
+            ),
+            OpenApiParameter(
+                name='blood_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                enum=['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'],
+                description='Filter health records by blood type'
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search keyword matching student name, allergies, consultation notes, medical history, or student ID'
+            ),
+        ],
+    ),
+    retrieve=extend_schema(
+        tags=['Health Records'],
+        summary="Retrieve a health record",
+        description="Retrieve details of a specific health record by health_id.",
+        responses={200: HealthRecordSerializer},
+    ),
+    create=extend_schema(
+        tags=['Health Records'],
+        summary="Create a health record",
+        description="Create a new clinic consultation / health record associated with a student.",
+        request=HealthRecordSerializer,
+        responses={201: HealthRecordSerializer},
+    ),
+    update=extend_schema(
+        tags=['Health Records'],
+        summary="Update a health record",
+        description="Update all fields of an existing health record.",
+        request=HealthRecordSerializer,
+        responses={200: HealthRecordSerializer},
+    ),
+    partial_update=extend_schema(
+        tags=['Health Records'],
+        summary="Partially update a health record",
+        description="Partially update one or more fields of an existing health record.",
+        request=HealthRecordSerializer,
+        responses={200: HealthRecordSerializer},
+    ),
+    destroy=extend_schema(
+        tags=['Health Records'],
+        summary="Delete a health record",
+        description="Delete an existing health record by health_id.",
+        responses={204: None},
+    ),
+)
 class HealthRecordViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing Health Records.

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
 
     # Local apps
     'clinic.apps.ClinicConfig',
@@ -160,7 +161,23 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'EXCEPTION_HANDLER': 'clinic.exceptions.custom_exception_handler',
+}
+
+
+# Spectacular / OpenAPI Configuration
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'IDSC Clinic System API',
+    'DESCRIPTION': (
+        'OpenAPI documentation for the IDSC Clinic System backend. '
+        'Provides endpoints for managing student records, health records, clinical consultations, '
+        'vital signs, medical histories, and allergies.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/',
 }
 
 
