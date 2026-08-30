@@ -24,6 +24,7 @@ def api_root_view(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/auth/', include('authentication.urls')),
     path('api/', include('clinic.urls')),
     path('', api_root_view, name='api-root'),
 ]
