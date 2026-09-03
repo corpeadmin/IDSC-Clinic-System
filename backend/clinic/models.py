@@ -183,3 +183,204 @@ class HealthRecord(models.Model):
     def __str__(self):
         visit_str = self.visit.strftime('%Y-%m-%d %H:%M') if self.visit else 'N/A'
         return f"Record #{self.health_id} - Student: {self.student_id} ({visit_str})"
+
+class Medicine(models.Model):
+    """
+    Medicine available in the clinic inventory.
+    Tracks current stock and the minimum level before
+    the medicine is considered low stock.
+    """
+    medicine_id = models.BigAutoField(
+        primary_key=True,
+        help_text="Unique medicine identifier"
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="Medicine name"
+    )
+    generic_name = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text="Generic name of the medicine"
+    )
+    unit = models.CharField(
+        max_length=50,
+        help_text="Unit of measurement (e.g. tablet, capsule, bottle)"
+    )
+    quantity_in_stock = models.PositiveIntegerField(
+        default=0,
+        help_text="Current quantity available in stock"
+    )
+    reorder_level = models.PositiveIntegerField(
+        default=10,
+        help_text="Stock level at which medicine is considered low stock"
+    )
+    expiration_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Medicine expiration date"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this medicine is currently available for dispensing"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        db_table = 'medicines'
+        ordering = ['name']
+        verbose_name = 'Medicine'
+        verbose_name_plural = 'Medicines'
+        indexes = [
+            models.Index(
+                fields=['name'],
+                name='idx_medicine_name'
+            ),
+            models.Index(
+                fields=['quantity_in_stock'],
+                name='idx_medicine_stock'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.quantity_in_stock} {self.unit})"
+
+
+class DispensingRecord(models.Model):
+    """
+    Records medicine dispensed to a student.
+    Each dispensing operation reduces the medicine stock.
+    """
+    dispensing_id = models.BigAutoField(
+        primary_key=True,
+        help_text="Unique dispensing record identifier"
+    )
+    medicine = models.ForeignKey(
+        Medicine,
+        on_delete=models.PROTECT,
+        related_name='dispensing_records',
+        db_column='medicine_id',
+        help_text="Medicine that was dispensed"
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.PROTECT,
+        related_name='dispensing_records',
+        db_column='student_id',
+        help_text="Student who received the medicine"
+    )
+    quantity = models.PositiveIntegerField(
+        help_text="Quantity of medicine dispensed"
+    )
+    dispensed_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.PROTECT,
+        related_name='dispensing_records',
+        help_text="User who dispensed the medicine"
+    )
+    dispensed_at = models.DateTimeField(
+        default=timezone.now
+    )
+    remarks = models.TextField(
+        blank=True,
+        default='',
+        help_text="Additional notes about the dispensing"
+    )
+
+    class Meta:
+        db_table = 'dispensing_records'
+        ordering = ['-dispensed_at', '-dispensing_id']
+        indexes = [
+            models.Index(
+                fields=['student', '-dispensed_at'],
+                name='idx_disp_student_date'
+            ),
+            models.Index(
+                fields=['medicine', '-dispensed_at'],
+                name='idx_disp_medicine_date'
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"Dispensing #{self.dispensing_id} - "
+            f"{self.medicine.name} x{self.quantity}"
+        )
+
+
+class StockTransaction(models.Model):
+    """
+    Records every change made to medicine stock.
+    Provides an audit trail for inventory changes.
+    """
+
+    class TransactionType(models.TextChoices):
+        STOCK_IN = 'STOCK_IN', 'Stock In'
+        DISPENSE = 'DISPENSE', 'Dispense'
+        ADJUSTMENT = 'ADJUSTMENT', 'Adjustment'
+
+    transaction_id = models.BigAutoField(
+        primary_key=True,
+        help_text="Unique stock transaction identifier"
+    )
+    medicine = models.ForeignKey(
+        Medicine,
+        on_delete=models.PROTECT,
+        related_name='stock_transactions',
+        db_column='medicine_id',
+        help_text="Medicine affected by the transaction"
+    )
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TransactionType.choices,
+        help_text="Type of stock transaction"
+    )
+    quantity = models.PositiveIntegerField(
+        help_text="Quantity involved in the transaction"
+    )
+    previous_stock = models.PositiveIntegerField(
+        help_text="Stock quantity before the transaction"
+    )
+    new_stock = models.PositiveIntegerField(
+        help_text="Stock quantity after the transaction"
+    )
+    created_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.PROTECT,
+        related_name='stock_transactions',
+        help_text="User who performed the transaction"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    remarks = models.TextField(
+        blank=True,
+        default='',
+        help_text="Additional notes about the transaction"
+    )
+
+    class Meta:
+        db_table = 'stock_transactions'
+        ordering = ['-created_at', '-transaction_id']
+        indexes = [
+            models.Index(
+                fields=['medicine', '-created_at'],
+                name='idx_stock_medicine_date'
+            ),
+            models.Index(
+                fields=['transaction_type', '-created_at'],
+                name='idx_stock_type_date'
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.transaction_type} - "
+            f"{self.medicine.name} ({self.quantity})"
+        )

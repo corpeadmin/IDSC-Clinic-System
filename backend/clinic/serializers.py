@@ -5,7 +5,15 @@ Provides full input validation, relationship handling, and serialization.
 
 from datetime import date
 from rest_framework import serializers
-from .models import Student, HealthRecord, SexChoices, BloodTypeChoices
+from .models import (
+    Student,
+    HealthRecord,
+    Medicine,
+    DispensingRecord,
+    StockTransaction,
+    SexChoices,
+    BloodTypeChoices,
+)
 
 
 class HealthRecordSerializer(serializers.ModelSerializer):
@@ -141,3 +149,215 @@ class StudentDetailSerializer(StudentSerializer):
 
     class Meta(StudentSerializer.Meta):
         fields = StudentSerializer.Meta.fields + ['health_records']
+
+
+class MedicineSerializer(serializers.ModelSerializer):
+    """
+    Serializer for medicines in the clinic inventory.
+    """
+
+    is_low_stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Medicine
+        fields = [
+            'medicine_id',
+            'name',
+            'generic_name',
+            'unit',
+            'quantity_in_stock',
+            'reorder_level',
+            'expiration_date',
+            'is_active',
+            'is_low_stock',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'medicine_id',
+            'quantity_in_stock',
+            'is_low_stock',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_is_low_stock(self, obj):
+        return obj.quantity_in_stock <= obj.reorder_level
+
+    def validate_name(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Medicine name cannot be blank."
+            )
+
+        return value
+
+    def validate_unit(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Medicine unit cannot be blank."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        reorder_level = attrs.get(
+            'reorder_level',
+            getattr(self.instance, 'reorder_level', 0)
+        )
+
+        if reorder_level < 0:
+            raise serializers.ValidationError({
+                'reorder_level': 'Reorder level cannot be negative.'
+            })
+
+        return attrs
+
+
+class DispensingRecordSerializer(serializers.ModelSerializer):
+    """
+    Serializer for medicine dispensing records.
+    """
+
+    medicine_name = serializers.CharField(
+        source='medicine.name',
+        read_only=True
+    )
+    student_name = serializers.CharField(
+        source='student.full_name',
+        read_only=True
+    )
+    dispensed_by_username = serializers.CharField(
+        source='dispensed_by.username',
+        read_only=True
+    )
+
+    class Meta:
+        model = DispensingRecord
+        fields = [
+            'dispensing_id',
+            'medicine',
+            'medicine_name',
+            'student',
+            'student_name',
+            'quantity',
+            'dispensed_by',
+            'dispensed_by_username',
+            'dispensed_at',
+            'remarks',
+        ]
+        read_only_fields = [
+            'dispensing_id',
+            'dispensed_by',
+            'dispensed_by_username',
+            'dispensed_at',
+        ]
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                "Dispensing quantity must be greater than 0."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        medicine = attrs.get('medicine')
+
+        if medicine and not medicine.is_active:
+            raise serializers.ValidationError({
+                'medicine': 'This medicine is inactive and cannot be dispensed.'
+            })
+
+        return attrs
+
+
+class StockTransactionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for medicine stock transaction history.
+    """
+
+    medicine_name = serializers.CharField(
+        source='medicine.name',
+        read_only=True
+    )
+    created_by_username = serializers.CharField(
+        source='created_by.username',
+        read_only=True
+    )
+    transaction_type_display = serializers.CharField(
+        source='get_transaction_type_display',
+        read_only=True
+    )
+
+    class Meta:
+        model = StockTransaction
+        fields = [
+            'transaction_id',
+            'medicine',
+            'medicine_name',
+            'transaction_type',
+            'transaction_type_display',
+            'quantity',
+            'previous_stock',
+            'new_stock',
+            'created_by',
+            'created_by_username',
+            'created_at',
+            'remarks',
+        ]
+        read_only_fields = [
+            'transaction_id',
+            'previous_stock',
+            'new_stock',
+            'created_by',
+            'created_by_username',
+            'created_at',
+        ]
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                "Transaction quantity must be greater than 0."
+            )
+
+        return value
+
+
+class StockInSerializer(serializers.Serializer):
+    """
+    Serializer for adding medicine stock.
+    """
+
+    quantity = serializers.IntegerField(min_value=1)
+
+    remarks = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+    )
+
+
+class StockAdjustmentSerializer(serializers.Serializer):
+    """
+    Serializer for adjusting medicine stock.
+    """
+
+    quantity = serializers.IntegerField(min_value=1)
+
+    adjustment = serializers.ChoiceField(
+        choices=[
+            ('INCREASE', 'Increase'),
+            ('DECREASE', 'Decrease'),
+        ]
+    )
+
+    remarks = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+    )
