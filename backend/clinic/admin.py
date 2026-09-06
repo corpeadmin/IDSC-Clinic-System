@@ -21,39 +21,17 @@ class StudentAdmin(admin.ModelAdmin):
     """Admin configuration for Student model."""
     list_display = (
         'student_id',
-        'first_name',
-        'last_name',
-        'course',
-        'section',
-        'sex',
-        'contact_no',
-        'birth_date',
         'created_at',
-    )
-    list_filter = (
-        'course',
-        'section',
-        'sex',
+        'updated_at',
     )
     search_fields = (
         'student_id',
-        'first_name',
-        'last_name',
-        'course',
-        'section',
-        'contact_no',
     )
     ordering = ('student_id',)
     inlines = [HealthRecordInline]
     fieldsets = (
         ('Student Identity', {
-            'fields': ('student_id', 'first_name', 'last_name')
-        }),
-        ('Academic Details', {
-            'fields': ('course', 'section')
-        }),
-        ('Personal & Contact Information', {
-            'fields': ('birth_date', 'sex', 'contact_no')
+            'fields': ('student_id',)
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -81,8 +59,6 @@ class HealthRecordAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'student__student_id',
-        'student__first_name',
-        'student__last_name',
         'blood_type',
         'allergies',
         'medication',

@@ -10,12 +10,6 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-class SexChoices(models.TextChoices):
-    MALE = 'Male', 'Male'
-    FEMALE = 'Female', 'Female'
-    OTHER = 'Other', 'Other'
-
-
 class BloodTypeChoices(models.TextChoices):
     A_POSITIVE = 'A+', 'A+'
     A_NEGATIVE = 'A-', 'A-'
@@ -31,45 +25,11 @@ class BloodTypeChoices(models.TextChoices):
 class Student(models.Model):
     """
     Student model representing enrolled students visiting the IDSC Clinic.
-    Uses student_id as the primary identifier.
+    Uses externally supplied student_id as the primary identifier.
     """
-    student_id = models.BigAutoField(
+    student_id = models.BigIntegerField(
         primary_key=True,
-        help_text="Auto-incrementing unique student identifier"
-    )
-    first_name = models.CharField(
-        max_length=100,
-        help_text="Student's first name"
-    )
-    last_name = models.CharField(
-        max_length=100,
-        help_text="Student's last name"
-    )
-    birth_date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Date of birth (YYYY-MM-DD)"
-    )
-    sex = models.CharField(
-        max_length=20,
-        choices=SexChoices.choices,
-        blank=True,
-        default='',
-        help_text="Student's sex/gender"
-    )
-    course = models.CharField(
-        max_length=100,
-        help_text="Degree program or course (e.g. BSIT, BSCS, BSN)"
-    )
-    section = models.CharField(
-        max_length=50,
-        help_text="Class section (e.g. 3A, 1-1, CS401)"
-    )
-    contact_no = models.CharField(
-        max_length=30,
-        blank=True,
-        default='',
-        help_text="Contact number or mobile phone"
+        help_text="Externally supplied unique student identifier"
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -85,17 +45,9 @@ class Student(models.Model):
         ordering = ['student_id']
         verbose_name = 'Student'
         verbose_name_plural = 'Students'
-        indexes = [
-            models.Index(fields=['last_name', 'first_name'], name='idx_student_name'),
-            models.Index(fields=['course', 'section'], name='idx_student_course_sec'),
-        ]
 
     def __str__(self):
-        return f"{self.student_id} - {self.first_name} {self.last_name}"
-
-    @property
-    def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.student_id}"
 
 
 class HealthRecord(models.Model):

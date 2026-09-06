@@ -6,17 +6,17 @@ IDSC Clinic System is a web-based system designed to streamline clinic operation
 
 ## 1. Project Overview
 
-The **IDSC Clinic System** provides a centralized digital platform for managing student health records, consultations, physical measurements, and clinic visit histories.
+The **IDSC Clinic System** provides a centralized digital platform for managing student health records, consultations, physical measurements, and clinic visit histories. Student identifiers are supplied by an external Registrar system.
 
 ### Core Objectives
 * **Streamline Clinic Operations**: Eliminates paper-based clinic record keeping and manual logs.
-* **Organize Student Medical Data**: Stores student profiles alongside chronological health records, vital stats, allergies, and consultation notes.
-* **Efficient Lookup & History**: Enables clinic staff to search students by name, course, or section, and inspect visit histories instantly.
+* **Organize Student Medical Data**: Stores student identifiers alongside chronological health records, vital stats, allergies, and consultation notes.
+* **Efficient Lookup & History**: Enables clinic staff to search students by student ID and inspect visit histories instantly.
 
 ### Component Responsibilities
 * **Backend (`backend/`)**: Built with Python and Django 6.1, exposing a RESTful JSON API using Django REST Framework (DRF). Handles business logic, input validation, relationship integrity, and database operations via Django ORM.
 * **REST API (`/api/`)**: Provides CRUD endpoints for Students and Health Records, plus nested relationship endpoints for querying and creating records tied to specific students.
-* **PostgreSQL (`clinic_db`)**: The relational database management system running in a Docker container (`clinic-postgres`). Enforces table constraints, foreign keys, database indexes, and auto-incrementing primary keys.
+* **PostgreSQL (`clinic_db`)**: The relational database management system running in a Docker container (`clinic-postgres`). Enforces table constraints, foreign keys, database indexes, and externally supplied primary keys.
 * **Django Admin (`/admin/`)**: Built-in administrative back-office portal with tabular inlines, multi-field search, and filtering for authorized clinic personnel.
 * **Frontend (`frontend/`)**: Single-page application built with React 19 and Vite, designed to consume the backend REST API over HTTP/CORS.
 
@@ -54,20 +54,20 @@ The application follows a clean layered architecture:
 │                 Frontend (React 19 + Vite)                │
 │                 http://localhost:5173                     │
 └─────────────────────────────┬─────────────────────────────┘
-                              │ HTTP / JSON (CORS Enabled)
-                              ▼
+                               │ HTTP / JSON (CORS Enabled)
+                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │             Django REST API (Views & ViewSets)            │
 │         StudentViewSet  │  HealthRecordViewSet            │
 └─────────────────────────────┬─────────────────────────────┘
-                              │ Validated Data / Serializers
-                              ▼
+                               │ Validated Data / Serializers
+                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │               Django ORM (Models & QuerySets)             │
 │            Student Model  │  HealthRecord Model           │
 └─────────────────────────────┬─────────────────────────────┘
-                              │ PostgreSQL Protocol (psycopg 3)
-                              ▼
+                               │ PostgreSQL Protocol (psycopg 3)
+                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │        PostgreSQL Database (Docker: clinic-postgres)      │
 │                     Database: clinic_db                   │
@@ -79,7 +79,7 @@ The application follows a clean layered architecture:
 1. **Frontend**: Renders the UI, collects user inputs, and makes asynchronous JSON API requests to backend endpoints.
 2. **Django REST API**: Authenticates requests, parses JSON payloads, runs serializer validations, handles exceptions gracefully, and returns HTTP status codes.
 3. **Django ORM**: Translates Python model queries into parameterized SQL statements, safeguarding against SQL injection and maintaining relational constraints.
-4. **PostgreSQL**: Persists tables, generates auto-incrementing integer sequence IDs (`student_id`, `health_id`), enforces foreign-key referential integrity (`ON DELETE CASCADE`), and optimizes search via composite B-tree indexes.
+4. **PostgreSQL**: Persists tables, stores externally supplied primary keys (`student_id`), enforces foreign-key referential integrity (`ON DELETE CASCADE`), and optimizes search via B-tree indexes.
 
 ---
 
@@ -108,12 +108,13 @@ IDSC Clinic System/
 │       ├── exceptions.py              # Custom API exception handler
 │       ├── models.py                  # Student & HealthRecord database models
 │       ├── serializers.py             # DRF serializers & field validation logic
-│       ├── tests.py                   # 31 automated unit & integration tests
+│       ├── tests.py                   # 28 automated unit & integration tests
 │       ├── urls.py                    # Clinic API router and route definitions
 │       ├── views.py                   # StudentViewSet & HealthRecordViewSet
 │       └── migrations/                # Database migration history
 │           ├── 0001_initial.py        # Initial table creation
-│           └── 0002_alter_student_student_id.py # Auto-increment student_id migration
+│           ├── 0002_alter_student_student_id.py # Auto-increment student_id migration
+│           └── 0003_remove_student_idx_student_name_and_more.py # Simplified student schema
 └── frontend/                          # Vite + React single-page frontend
     ├── index.html                     # HTML entry template
     ├── package.json                   # Frontend dependencies and npm scripts
@@ -122,7 +123,7 @@ IDSC Clinic System/
     └── src/                           # Frontend source code
         ├── main.jsx                   # React application root mount point
         ├── App.jsx                    # Root UI component
-        ├── App.css                    # Main application styling
+        ├── App.css                    # Main application stylesheet
         ├── index.css                  # Global base stylesheet
         └── assets/                    # Static UI images and SVG logos
 ```
@@ -173,26 +174,17 @@ Defined in [`backend/clinic/models.py`](file:///C:/Users/alexa/PycharmProjects/I
 
 | Field | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `student_id` | `BigAutoField` | `primary_key=True` | Auto-incrementing integer ID generated by the database. |
-| `first_name` | `CharField(max_length=100)` | Non-blank | Student's given first name. |
-| `last_name` | `CharField(max_length=100)` | Non-blank | Student's family last name. |
-| `birth_date` | `DateField` | `null=True, blank=True` | Date of birth (must not be in the future). |
-| `sex` | `CharField(max_length=20)` | `choices=['Male', 'Female', 'Other']`, `blank=True` | Biological sex or gender. |
-| `course` | `CharField(max_length=100)` | Non-blank | Degree program / course (e.g. BSIT, BSN, BSCS). |
-| `section` | `CharField(max_length=50)` | Non-blank | Class section (e.g. 3A, 1-1). |
-| `contact_no` | `CharField(max_length=30)` | `blank=True, default=''` | Contact or mobile phone number. |
+| `student_id` | `BigIntegerField` | `primary_key=True` | Externally supplied unique student identifier. Must be provided on creation. |
 | `created_at` | `DateTimeField` | `auto_now_add=True` | Record creation timestamp. |
 | `updated_at` | `DateTimeField` | `auto_now=True` | Record last-updated timestamp. |
 
 ### Database Metadata
 * **Table Name**: `students`
 * **Default Ordering**: `['student_id']`
-* **Indexes**:
-  * `idx_student_name` on `(last_name, first_name)`
-  * `idx_student_course_sec` on `(course, section)`
+* **Indexes**: None
 
 > [!IMPORTANT]
-> `student_id` is an **auto-incrementing integer primary key**. Clients must **NOT** supply `student_id` when creating a student. The database automatically assigns sequential integer IDs (`1, 2, 3, ...`).
+> `student_id` is an **externally supplied primary key**. It must be provided when creating a student and must not be auto-generated by the database.
 
 ---
 
@@ -229,7 +221,7 @@ Defined in [`backend/clinic/models.py`](file:///C:/Users/alexa/PycharmProjects/I
 The data model implements a strict **One-to-Many** relationship:
 
 ```text
-Student (student_id = 1)
+Student (student_id = 2026001234)
   ├── HealthRecord (health_id = 1, visit = 2026-08-20)
   ├── HealthRecord (health_id = 2, visit = 2026-08-22)
   └── HealthRecord (health_id = 5, visit = 2026-08-25)
@@ -254,8 +246,8 @@ Base URL: `http://127.0.0.1:8000`
 
 | Method | Endpoint | Description | Status Codes |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/students/` | List all students (supports search and filtering). | `200 OK` |
-| `POST` | `/api/students/` | Create a new student (do not provide `student_id`). | `201 Created`, `400 Bad Request` |
+| `GET` | `/api/students/` | List all students (supports search by student ID). | `200 OK` |
+| `POST` | `/api/students/` | Create a new student (must provide `student_id`). | `201 Created`, `400 Bad Request` |
 | `GET` | `/api/students/<student_id>/` | Retrieve a single student and their consultation history. | `200 OK`, `404 Not Found` |
 | `PUT` | `/api/students/<student_id>/` | Fully update a student record. | `200 OK`, `400 Bad Request`, `404 Not Found` |
 | `PATCH` | `/api/students/<student_id>/` | Partially update a student record. | `200 OK`, `400 Bad Request`, `404 Not Found` |
@@ -289,27 +281,22 @@ Base URL: `http://127.0.0.1:8000`
 
 ### Student Search & Filtering
 Query parameters supported on `GET /api/students/`:
-* `?search=<text>`: Case-insensitive search matching `first_name`, `last_name`, `course`, `section`, or exact numeric `student_id`.
-* `?course=<course_name>`: Exact case-insensitive filter by course (e.g. `?course=BSIT`).
-* `?section=<section_name>`: Exact case-insensitive filter by section (e.g. `?section=3A`).
-* `?sex=<sex_value>`: Exact filter by sex (e.g. `?sex=Male`).
+* `?search=<text>`: Exact or partial match on `student_id`.
 
 **Examples:**
 ```http
-GET /api/students/?search=Juan
-GET /api/students/?search=1
-GET /api/students/?course=BS%20Information%20Technology&section=3A
+GET /api/students/?search=2026001234
 ```
 
 ### Health Record Search & Filtering
 Query parameters supported on `GET /api/health-records/`:
-* `?student_id=<id>`: Filter health records by integer student ID (e.g. `?student_id=1`).
+* `?student_id=<id>`: Filter health records by integer student ID (e.g. `?student_id=2026001234`).
 * `?blood_type=<type>`: Filter health records by blood type (e.g. `?blood_type=O+`).
-* `?search=<text>`: Case-insensitive search across student name, student ID, allergies, medical history, or consultation notes.
+* `?search=<text>`: Case-insensitive search across allergies, consultation notes, or medical history.
 
 **Examples:**
 ```http
-GET /api/health-records/?student_id=1
+GET /api/health-records/?student_id=2026001234
 GET /api/health-records/?blood_type=O+
 GET /api/health-records/?search=Asthma
 ```
@@ -325,27 +312,14 @@ POST /api/students/
 Content-Type: application/json
 
 {
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2003-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789"
+  "student_id": 2026001234
 }
 ```
 
 **Response (`201 Created`):**
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2003-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
+  "student_id": 2026001234,
   "health_records_count": 0,
   "created_at": "2026-08-22T14:47:00.000000Z",
   "updated_at": "2026-08-22T14:47:00.000000Z"
@@ -355,7 +329,7 @@ Content-Type: application/json
 ---
 
 ### 2. Create a Health Record (`POST /api/health-records/`)
-Supply the generated integer `student_id`:
+Supply the externally provided `student_id`:
 
 **Request:**
 ```http
@@ -363,7 +337,7 @@ POST /api/health-records/
 Content-Type: application/json
 
 {
-  "student_id": 1,
+  "student_id": 2026001234,
   "allergies": "Penicillin",
   "blood_type": "O+",
   "medical_history": "Mild asthma diagnosed in 2018",
@@ -378,8 +352,7 @@ Content-Type: application/json
 ```json
 {
   "health_id": 1,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin",
   "blood_type": "O+",
   "medical_history": "Mild asthma diagnosed in 2018",
@@ -395,24 +368,18 @@ Content-Type: application/json
 
 ---
 
-### 3. Retrieve Student Details with Records (`GET /api/students/1/`)
+### 3. Retrieve Student Details with Records (`GET /api/students/2026001234/`)
 **Response (`200 OK`):**
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2003-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
+  "student_id": 2026001234,
   "health_records_count": 1,
+  "created_at": "2026-08-22T14:47:00.000000Z",
+  "updated_at": "2026-08-22T14:47:00.000000Z",
   "health_records": [
     {
       "health_id": 1,
-      "student_id": 1,
-      "student_name": "Juan Dela Cruz",
+      "student_id": 2026001234,
       "allergies": "Penicillin",
       "blood_type": "O+",
       "medical_history": "Mild asthma diagnosed in 2018",
@@ -424,9 +391,7 @@ Content-Type: application/json
       "created_at": "2026-08-22T14:47:00.000000Z",
       "updated_at": "2026-08-22T14:47:00.000000Z"
     }
-  ],
-  "created_at": "2026-08-22T14:47:00.000000Z",
-  "updated_at": "2026-08-22T14:47:00.000000Z"
+  ]
 }
 ```
 
@@ -437,19 +402,13 @@ Content-Type: application/json
 Implemented in [`backend/clinic/serializers.py`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/serializers.py):
 
 ### [`StudentSerializer`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/serializers.py#L71-L135)
-* **Required Fields**: `first_name`, `last_name`, `course`, `section`
-* **Optional Fields**: `birth_date`, `sex`, `contact_no`
-* **Read-Only Fields**: `student_id`, `health_records_count`, `created_at`, `updated_at`
-* **Field Validations**:
-  * `first_name` & `last_name`: Stripped and validated to ensure non-empty strings.
-  * `course` & `section`: Stripped and validated to ensure non-empty strings.
-  * `birth_date`: Rejects dates in the future (`birth_date > date.today()`).
-  * `sex`: Validates against permitted choices (`Male`, `Female`, `Other`).
+* **Required Fields**: `student_id`
+* **Read-Only Fields**: `health_records_count`, `created_at`, `updated_at`
 
 ### [`HealthRecordSerializer`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/serializers.py#L11-L68)
 * **Required Fields**: `student_id` (foreign key)
 * **Optional Fields**: `allergies`, `blood_type`, `medical_history`, `medication`, `weight`, `height`, `visit`, `consultation`
-* **Read-Only Fields**: `health_id`, `student_name`, `created_at`, `updated_at`
+* **Read-Only Fields**: `health_id`, `created_at`, `updated_at`
 * **Field Validations**:
   * `student_id`: Validated against active `Student` records in PostgreSQL (returns `400 Bad Request` if invalid).
   * `weight`: Must be `> 0 kg` and `<= 500 kg`.
@@ -497,15 +456,14 @@ Implemented in [`backend/clinic/views.py`](file:///C:/Users/alexa/PycharmProject
 Configured in [`backend/clinic/admin.py`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/admin.py):
 
 * **[`StudentAdmin`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/admin.py#L19-L64)**:
-  * **List Display**: `student_id`, `first_name`, `last_name`, `course`, `section`, `sex`, `contact_no`, `birth_date`, `created_at`.
-  * **Filters**: `course`, `section`, `sex`.
-  * **Search**: `student_id`, `first_name`, `last_name`, `course`, `section`, `contact_no`.
+  * **List Display**: `student_id`, `created_at`, `updated_at`.
+  * **Search**: `student_id`.
   * **Inline**: Includes [`HealthRecordInline`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/admin.py#L10-L16) allowing clinic staff to view and log health records directly from the student's page.
   * **Read-Only**: `student_id`, `created_at`, `updated_at`.
 * **[`HealthRecordAdmin`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/admin.py#L66-L112)**:
   * **List Display**: `health_id`, `student`, `blood_type`, `visit`, `weight`, `height`, `created_at`.
   * **Filters**: `blood_type`, `visit`.
-  * **Search**: `student__student_id`, `student__first_name`, `student__last_name`, `blood_type`, `allergies`, `medication`, `consultation`.
+  * **Search**: `student__student_id`, `blood_type`, `allergies`, `medication`, `consultation`.
   * **Raw ID Fields**: `student`.
 
 ---
@@ -516,6 +474,7 @@ Database schema changes are tracked in `backend/clinic/migrations/`:
 
 * **`0001_initial.py`**: Created the initial `students` and `health_records` tables with relationships, checks, and indexes.
 * **`0002_alter_student_student_id.py`**: Updated `Student.student_id` to an auto-incrementing `BigAutoField`.
+* **`0003_remove_student_idx_student_name_and_more.py`**: Simplified `Student` model to only `student_id`, `created_at`, and `updated_at`. Changed `student_id` to manually supplied `BigIntegerField` primary key. Removed obsolete fields and indexes.
 
 ### Migration Commands
 * `python manage.py makemigrations`: Scans model files and generates new migration scripts.
@@ -527,17 +486,17 @@ Database schema changes are tracked in `backend/clinic/migrations/`:
 
 The test suite is located in [`backend/clinic/tests.py`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/tests.py) using DRF's `APITestCase`:
 
-### Test Coverage Breakdown (**31 Tests Total**)
-* **`StudentModelTests`** (2 tests): Model instantiation, auto-increment integer ID generation, full name property, `__str__` format.
+### Test Coverage Breakdown (**28 Tests Total**)
+* **`StudentModelTests`** (2 tests): Model instantiation with externally supplied `student_id`, timestamp population, string representation.
 * **`HealthRecordModelTests`** (2 tests): Model instantiation, FK association, Decimal vitals precision, `ON DELETE CASCADE` deletion test.
-* **`StudentAPITests`** (9 tests): `GET` list, search by name/ID, filter by course, `POST` create without `student_id`, ignoring client-provided `student_id`, future birth date rejection, `GET` single student, `GET` 404 handler, `PUT` full update, `PATCH` partial update, `DELETE` student.
+* **`StudentAPITests`** (7 tests): `GET` list, search by student ID, `POST` create with external `student_id`, `GET` single student, `GET` 404 handler, `PUT` full update, `PATCH` partial update, `DELETE` student.
 * **`HealthRecordAPITests`** (8 tests): `GET` list, `POST` create with integer `student_id`, non-existent student 400 rejection, negative weight rejection, `GET` single record, `PUT` full update, `PATCH` partial update, `DELETE` record.
 * **`StudentHealthRecordRelationshipEndpointTests`** (4 tests): `GET` student records, `GET` 404 for missing student, `POST` create record via nested URL, `POST` 404 for missing student.
-* **`ErrorHandlingAndValidationTests`** (5 tests): Blank student name validation, invalid sex choice rejection, invalid blood type rejection, excessive weight/height rejection (>500kg / >300cm), API root discovery check.
+* **`ErrorHandlingAndValidationTests`** (5 tests): Duplicate student ID rejection, invalid blood type rejection, excessive weight/height rejection (>500kg / >300cm), API root discovery check.
 
 ### Verified Test Run
 ```text
-Ran 31 tests in 0.687s
+Ran 28 tests in 1.152s
 OK
 Destroying test database for alias 'default'...
 System check identified no issues (0 silenced).
@@ -549,7 +508,7 @@ System check identified no issues (0 silenced).
 
 * **ORM Parameterization**: All queries use Django ORM filter expressions and parameterized lookups; no raw SQL string concatenation is used.
 * **Referential Integrity**: PostgreSQL enforces foreign keys (`FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE`).
-* **Input Sanitization**: Serializers strip whitespace, enforce numeric limits on medical vitals, validate controlled choice lists, and verify calendar constraints.
+* **Input Sanitization**: Serializers enforce numeric limits on medical vitals, validate controlled choice lists, and verify primary key existence.
 * **Centralized Exception Handling**: Implemented in [`backend/clinic/exceptions.py`](file:///C:/Users/alexa/PycharmProjects/IDSC%20Clinic%20System/backend/clinic/exceptions.py) to intercept `IntegrityError` and `ValidationError`, returning clean JSON error responses rather than leaking database internals or stack traces.
 * **Secrets Separation**: Sensitive settings (`SECRET_KEY`, database passwords) are loaded via environment variables rather than hardcoded in source code.
 

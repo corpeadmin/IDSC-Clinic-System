@@ -1,7 +1,7 @@
 """
 Comprehensive unit and integration test suite for IDSC Clinic System.
 Tests models, serializers, API endpoints, relationships, validation constraints,
-auto-incrementing primary keys, security, and error handling.
+externally supplied primary keys, security, and error handling.
 """
 
 from datetime import date, timedelta
@@ -9,46 +9,27 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from clinic.models import Student, HealthRecord, SexChoices, BloodTypeChoices
+from clinic.models import Student, HealthRecord, BloodTypeChoices
 
 
 class StudentModelTests(APITestCase):
-    """Unit tests for the Student database model with auto-incrementing primary key."""
+    """Unit tests for the Student database model with externally supplied primary key."""
 
     def setUp(self):
         self.student = Student.objects.create(
-            first_name="Juan",
-            last_name="Dela Cruz",
-            birth_date=date(2002, 5, 15),
-            sex=SexChoices.MALE,
-            course="BS Information Technology",
-            section="3A",
-            contact_no="09123456789"
+            student_id=2026000001
         )
 
-    def test_student_creation_and_auto_id(self):
-        """Verify that student_id is auto-generated as an integer."""
+    def test_student_creation_with_external_id(self):
+        """Verify that student_id is stored exactly as provided externally."""
         self.assertIsInstance(self.student.student_id, int)
-        self.assertGreater(self.student.student_id, 0)
-        self.assertEqual(self.student.first_name, "Juan")
-        self.assertEqual(self.student.last_name, "Dela Cruz")
-        self.assertEqual(self.student.full_name, "Juan Dela Cruz")
-        self.assertEqual(str(self.student), f"{self.student.student_id} - Juan Dela Cruz")
-        self.assertEqual(self.student.course, "BS Information Technology")
-        self.assertEqual(self.student.section, "3A")
-        self.assertEqual(self.student.contact_no, "09123456789")
+        self.assertEqual(self.student.student_id, 2026000001)
         self.assertIsNotNone(self.student.created_at)
         self.assertIsNotNone(self.student.updated_at)
 
-    def test_student_auto_increment(self):
-        """Verify that sequential students receive auto-incrementing integer IDs."""
-        student2 = Student.objects.create(
-            first_name="Maria",
-            last_name="Clara",
-            course="BS Nursing",
-            section="1A"
-        )
-        self.assertEqual(student2.student_id, self.student.student_id + 1)
+    def test_student_str_representation(self):
+        """Verify string representation uses student_id."""
+        self.assertEqual(str(self.student), "2026000001")
 
 
 class HealthRecordModelTests(APITestCase):
@@ -56,13 +37,7 @@ class HealthRecordModelTests(APITestCase):
 
     def setUp(self):
         self.student = Student.objects.create(
-            first_name="Maria",
-            last_name="Santos",
-            birth_date=date(2003, 8, 20),
-            sex=SexChoices.FEMALE,
-            course="BS Nursing",
-            section="2B",
-            contact_no="09987654321"
+            student_id=2026000002
         )
         self.record = HealthRecord.objects.create(
             student=self.student,
@@ -98,22 +73,10 @@ class StudentAPITests(APITestCase):
 
     def setUp(self):
         self.student1 = Student.objects.create(
-            first_name="Alice",
-            last_name="Guinobatan",
-            birth_date=date(2001, 1, 10),
-            sex=SexChoices.FEMALE,
-            course="BS Computer Science",
-            section="4A",
-            contact_no="09111111111"
+            student_id=2026000003
         )
         self.student2 = Student.objects.create(
-            first_name="Bob",
-            last_name="Reyes",
-            birth_date=date(2002, 2, 20),
-            sex=SexChoices.MALE,
-            course="BS Information Technology",
-            section="3B",
-            contact_no="09222222222"
+            student_id=2026000004
         )
 
     def test_get_all_students(self):
@@ -126,78 +89,27 @@ class StudentAPITests(APITestCase):
         self.assertIn(self.student2.student_id, student_ids)
 
     def test_search_and_filter_students(self):
-        """GET /api/students/?search=... and ?course=... filter correctly."""
-        # Search by name
-        response = self.client.get('/api/students/?search=Alice')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['student_id'], self.student1.student_id)
-
-        # Search by numeric student_id
+        """GET /api/students/?search=... filters correctly by student_id."""
         response = self.client.get(f'/api/students/?search={self.student1.student_id}')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['student_id'], self.student1.student_id)
 
-        # Filter by course
-        response = self.client.get('/api/students/?course=BS Computer Science')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['student_id'], self.student1.student_id)
-
-    def test_create_student_success_auto_generated_id(self):
-        """POST /api/students/ without student_id generates auto-incremented student_id."""
+    def test_create_student_success_with_external_id(self):
+        """POST /api/students/ accepts externally supplied student_id."""
         payload = {
-            "first_name": "Carlos",
-            "last_name": "Mendoza",
-            "birth_date": "2003-03-30",
-            "sex": "Male",
-            "course": "BS Nursing",
-            "section": "1C",
-            "contact_no": "09333333333"
+            "student_id": 2026000005
         }
         response = self.client.post('/api/students/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('student_id', response.data)
-        self.assertIsInstance(response.data['student_id'], int)
-        self.assertEqual(response.data['first_name'], "Carlos")
-        self.assertTrue(Student.objects.filter(pk=response.data['student_id']).exists())
-
-    def test_create_student_ignores_client_provided_student_id(self):
-        """POST /api/students/ ignores client-provided student_id and uses database auto-increment."""
-        payload = {
-            "student_id": 999999,  # Should be ignored (read-only)
-            "first_name": "Diana",
-            "last_name": "Prince",
-            "course": "BSIT",
-            "section": "2A"
-        }
-        response = self.client.post('/api/students/', payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # Verify student_id was generated sequentially, not set to 999999
-        self.assertNotEqual(response.data['student_id'], 999999)
-        self.assertTrue(Student.objects.filter(pk=response.data['student_id']).exists())
-
-    def test_create_student_future_birth_date_fails(self):
-        """POST /api/students/ with future birth_date returns 400 Bad Request."""
-        future_date = (date.today() + timedelta(days=10)).strftime('%Y-%m-%d')
-        payload = {
-            "first_name": "Future",
-            "last_name": "Baby",
-            "birth_date": future_date,
-            "course": "BSIT",
-            "section": "1A"
-        }
-        response = self.client.post('/api/students/', payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('birth_date', str(response.data))
+        self.assertEqual(response.data['student_id'], 2026000005)
+        self.assertTrue(Student.objects.filter(pk=2026000005).exists())
 
     def test_get_single_student(self):
         """GET /api/students/<student_id>/ retrieves single student."""
         response = self.client.get(f'/api/students/{self.student1.student_id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['student_id'], self.student1.student_id)
-        self.assertEqual(response.data['first_name'], "Alice")
 
     def test_get_nonexistent_student_returns_404(self):
         """GET /api/students/<student_id>/ with non-existent ID returns 404."""
@@ -205,38 +117,23 @@ class StudentAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_put_update_student(self):
-        """PUT /api/students/<student_id>/ fully updates student record."""
+        """PUT /api/students/<student_id/> fully updates student record."""
         payload = {
-            "first_name": "Alicia",
-            "last_name": "Guinobatan",
-            "birth_date": "2001-01-10",
-            "sex": "Female",
-            "course": "BS Data Science",
-            "section": "4B",
-            "contact_no": "09119999999"
+            "student_id": self.student1.student_id
         }
         response = self.client.put(f'/api/students/{self.student1.student_id}/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['first_name'], "Alicia")
-        self.assertEqual(response.data['course'], "BS Data Science")
-        
-        self.student1.refresh_from_db()
-        self.assertEqual(self.student1.first_name, "Alicia")
-        self.assertEqual(self.student1.course, "BS Data Science")
+        self.assertEqual(response.data['student_id'], self.student1.student_id)
 
     def test_patch_update_student(self):
-        """PATCH /api/students/<student_id>/ partially updates student record."""
-        payload = {"section": "4-Special"}
+        """PATCH /api/students/<student_id/> partially updates student record."""
+        payload = {"student_id": self.student1.student_id}
         response = self.client.patch(f'/api/students/{self.student1.student_id}/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['section'], "4-Special")
-        self.assertEqual(response.data['first_name'], "Alice")
-
-        self.student1.refresh_from_db()
-        self.assertEqual(self.student1.section, "4-Special")
+        self.assertEqual(response.data['student_id'], self.student1.student_id)
 
     def test_delete_student(self):
-        """DELETE /api/students/<student_id>/ removes student (204 No Content)."""
+        """DELETE /api/students/<student_id/> removes student (204 No Content)."""
         response = self.client.delete(f'/api/students/{self.student1.student_id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Student.objects.filter(pk=self.student1.student_id).exists())
@@ -247,13 +144,7 @@ class HealthRecordAPITests(APITestCase):
 
     def setUp(self):
         self.student = Student.objects.create(
-            first_name="David",
-            last_name="Tan",
-            birth_date=date(2000, 11, 5),
-            sex=SexChoices.MALE,
-            course="BS Biology",
-            section="4C",
-            contact_no="09444444444"
+            student_id=2026000006
         )
         self.record1 = HealthRecord.objects.create(
             student=self.student,
@@ -359,19 +250,10 @@ class StudentHealthRecordRelationshipEndpointTests(APITestCase):
 
     def setUp(self):
         self.student = Student.objects.create(
-            first_name="Elena",
-            last_name="Ramos",
-            birth_date=date(2004, 4, 12),
-            sex=SexChoices.FEMALE,
-            course="BS Pharmacy",
-            section="2A",
-            contact_no="09555555555"
+            student_id=2026000007
         )
         self.other_student = Student.objects.create(
-            first_name="Frank",
-            last_name="Lim",
-            course="BSIT",
-            section="1A"
+            student_id=2026000008
         )
         # Create 2 records for Elena
         self.record1 = HealthRecord.objects.create(
@@ -437,36 +319,19 @@ class StudentHealthRecordRelationshipEndpointTests(APITestCase):
 class ErrorHandlingAndValidationTests(APITestCase):
     """Tests for error handling, validation constraints, and security."""
 
-    def test_student_blank_name_fails_validation(self):
-        """Creating student with empty first_name or last_name returns 400."""
+    def test_student_duplicate_id_fails(self):
+        """Creating student with duplicate student_id returns 400."""
+        Student.objects.create(student_id=2026000009)
         payload = {
-            "first_name": "   ",
-            "last_name": "Test",
-            "course": "BSIT",
-            "section": "1A"
+            "student_id": 2026000009
         }
         response = self.client.post('/api/students/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_student_invalid_sex_fails_validation(self):
-        """Creating student with invalid sex choice returns 400."""
-        payload = {
-            "first_name": "Test",
-            "last_name": "User",
-            "sex": "InvalidSex",
-            "course": "BSIT",
-            "section": "1A"
-        }
-        response = self.client.post('/api/students/', payload, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_health_record_invalid_blood_type_fails_validation(self):
+    def test_health_record_invalid_blood_type_fails(self):
         """Creating health record with invalid blood type returns 400."""
         student = Student.objects.create(
-            first_name="Test",
-            last_name="User",
-            course="BSIT",
-            section="1A"
+            student_id=2026000010
         )
         payload = {
             "student_id": student.student_id,
@@ -478,10 +343,7 @@ class ErrorHandlingAndValidationTests(APITestCase):
     def test_health_record_excessive_weight_and_height_fails(self):
         """Creating health record with weight > 500kg or height > 300cm returns 400."""
         student = Student.objects.create(
-            first_name="Test",
-            last_name="User",
-            course="BSIT",
-            section="1A"
+            student_id=2026000011
         )
         payload = {
             "student_id": student.student_id,

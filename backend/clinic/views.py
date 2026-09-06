@@ -24,32 +24,13 @@ from .serializers import (
     list=extend_schema(
         tags=['Students'],
         summary="List all students",
-        description="Retrieve a list of all students with optional search and filtering by course, section, or sex.",
+        description="Retrieve a list of all students with optional search by student ID.",
         parameters=[
             OpenApiParameter(
                 name='search',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Search keyword matching first name, last name, course, section, or student ID'
-            ),
-            OpenApiParameter(
-                name='course',
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Filter by degree program / course (case-insensitive exact match)'
-            ),
-            OpenApiParameter(
-                name='section',
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Filter by section (case-insensitive exact match)'
-            ),
-            OpenApiParameter(
-                name='sex',
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                enum=['Male', 'Female', 'Other'],
-                description="Filter by sex (Male, Female, Other)"
+                description='Search keyword matching student ID'
             ),
         ],
     ),
@@ -62,14 +43,14 @@ from .serializers import (
     create=extend_schema(
         tags=['Students'],
         summary="Create a new student",
-        description="Register a new student record in the IDSC Clinic System.",
+        description="Register a new student record in the IDSC Clinic System with an externally supplied student_id.",
         request=StudentSerializer,
         responses={201: StudentSerializer},
     ),
     update=extend_schema(
         tags=['Students'],
         summary="Update a student",
-        description="Update all fields of an existing student record.",
+        description="Update fields of an existing student record.",
         request=StudentSerializer,
         responses={200: StudentSerializer},
     ),
@@ -91,8 +72,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing Students.
     Supports complete CRUD operations:
-    - GET /api/students/ : List all students (with optional filtering)
-    - POST /api/students/ : Create a new student
+    - GET /api/students/ : List all students (with optional search by student_id)
+    - POST /api/students/ : Create a new student with externally supplied student_id
     - GET /api/students/<student_id>/ : Retrieve student by ID
     - PUT /api/students/<student_id>/ : Fully update student
     - PATCH /api/students/<student_id>/ : Partially update student
@@ -113,28 +94,11 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Student.objects.prefetch_related('health_records').all()
         
-        # Query parameter filters
         search = self.request.query_params.get('search', '').strip()
-        course = self.request.query_params.get('course', '').strip()
-        section = self.request.query_params.get('section', '').strip()
-        sex = self.request.query_params.get('sex', '').strip()
 
         if search:
-            filters = (
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(course__icontains=search) |
-                Q(section__icontains=search)
-            )
             if search.isdigit():
-                filters |= Q(student_id=int(search))
-            queryset = queryset.filter(filters)
-        if course:
-            queryset = queryset.filter(course__iexact=course)
-        if section:
-            queryset = queryset.filter(section__iexact=section)
-        if sex:
-            queryset = queryset.filter(sex__iexact=sex)
+                queryset = queryset.filter(student_id=int(search))
 
         return queryset
 
@@ -202,7 +166,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 name='search',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Search keyword matching student name, allergies, consultation notes, medical history, or student ID'
+                description='Search keyword matching allergies, consultation notes, medical history, or student ID'
             ),
         ],
     ),
@@ -272,8 +236,6 @@ class HealthRecordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(blood_type__iexact=blood_type)
         if search:
             filters = (
-                Q(student__first_name__icontains=search) |
-                Q(student__last_name__icontains=search) |
                 Q(allergies__icontains=search) |
                 Q(consultation__icontains=search) |
                 Q(medical_history__icontains=search)

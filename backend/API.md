@@ -34,7 +34,7 @@ Interactive API documentation and comprehensive reference for the IDSC Clinic Sy
 
 ## Overview
 
-The IDSC Clinic System API provides complete CRUD functionality for managing clinic operations, student patient profiles, and medical consultation records.
+The IDSC Clinic System API provides complete CRUD functionality for managing clinic operations and medical consultation records. Student identifiers are supplied by an external Registrar system.
 
 - **API Version:** `1.0.0`
 - **Format:** JSON (`application/json`)
@@ -81,8 +81,8 @@ All API errors return standardized JSON structures processed by the backend exce
   "success": false,
   "status_code": 400,
   "errors": {
-    "first_name": [
-      "First name cannot be blank."
+    "student_id": [
+      "A valid integer is required."
     ]
   }
 }
@@ -118,10 +118,10 @@ All API errors return standardized JSON structures processed by the backend exce
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/students/` | List all students with search and filtering |
-| `POST` | `/api/students/` | Register a new student |
+| `GET` | `/api/students/` | List all students with optional search by student ID |
+| `POST` | `/api/students/` | Register a new student with externally supplied student_id |
 | `GET` | `/api/students/{student_id}/` | Retrieve student details and nested health records |
-| `PUT` | `/api/students/{student_id}/` | Update all fields of a student |
+| `PUT` | `/api/students/{student_id}/` | Update fields of a student |
 | `PATCH` | `/api/students/{student_id}/` | Partially update fields of a student |
 | `DELETE` | `/api/students/{student_id}/` | Delete student and all associated records |
 | `GET` | `/api/students/{student_id}/health-records/` | List health records for a specific student |
@@ -152,15 +152,12 @@ Retrieve a list of students with optional query parameter filtering.
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `search` | `string` | No | Search across first name, last name, course, section, or student ID |
-| `course` | `string` | No | Filter by course / program (case-insensitive exact match) |
-| `section` | `string` | No | Filter by section (case-insensitive exact match) |
-| `sex` | `string` | No | Filter by sex (`Male`, `Female`, `Other`) |
+| `search` | `string` | No | Search by student ID |
 
 #### Example Request
 
 ```http
-GET /api/students/?course=BSIT&sex=Male HTTP/1.1
+GET /api/students/?search=2026001234 HTTP/1.1
 Host: localhost:8000
 Accept: application/json
 ```
@@ -170,14 +167,7 @@ Accept: application/json
 ```json
 [
   {
-    "student_id": 1,
-    "first_name": "Juan",
-    "last_name": "Dela Cruz",
-    "birth_date": "2002-05-15",
-    "sex": "Male",
-    "course": "BS Information Technology",
-    "section": "3A",
-    "contact_no": "09123456789",
+    "student_id": 2026001234,
     "health_records_count": 2,
     "created_at": "2026-08-28T10:00:00Z",
     "updated_at": "2026-08-28T10:30:00Z"
@@ -189,7 +179,7 @@ Accept: application/json
 
 ### 2. Create Student
 
-Register a new student in the clinic system.
+Register a new student in the clinic system. The `student_id` is provided by an external Registrar system.
 
 - **HTTP Method:** `POST`
 - **Path:** `/api/students/`
@@ -199,25 +189,13 @@ Register a new student in the clinic system.
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `first_name` | `string` (max 100) | **Yes** | Student's first name |
-| `last_name` | `string` (max 100) | **Yes** | Student's last name |
-| `course` | `string` (max 100) | **Yes** | Degree program or course (e.g., `BSIT`, `BSCS`, `BSN`) |
-| `section` | `string` (max 50) | **Yes** | Class section (e.g., `3A`, `1-1`) |
-| `birth_date` | `string` (date: `YYYY-MM-DD`) | No | Date of birth (cannot be in the future) |
-| `sex` | `string` | No | `Male`, `Female`, or `Other` |
-| `contact_no` | `string` (max 30) | No | Contact telephone or mobile number |
+| `student_id` | `integer` | **Yes** | Externally supplied unique student identifier |
 
 #### Example Request
 
 ```json
 {
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789"
+  "student_id": 2026001234
 }
 ```
 
@@ -225,14 +203,7 @@ Register a new student in the clinic system.
 
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
+  "student_id": 2026001234,
   "health_records_count": 0,
   "created_at": "2026-08-28T10:00:00Z",
   "updated_at": "2026-08-28T10:00:00Z"
@@ -252,28 +223,20 @@ Retrieve complete details for a specific student, including their nested list of
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `student_id` | `integer` | **Yes** | Unique auto-incrementing student identifier |
+| `student_id` | `integer` | **Yes** | Externally supplied unique student identifier |
 
 #### Response (`200 OK`)
 
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
+  "student_id": 2026001234,
   "health_records_count": 1,
   "created_at": "2026-08-28T10:00:00Z",
   "updated_at": "2026-08-28T10:30:00Z",
   "health_records": [
     {
       "health_id": 10,
-      "student_id": 1,
-      "student_name": "Juan Dela Cruz",
+      "student_id": 2026001234,
       "allergies": "Penicillin",
       "blood_type": "O+",
       "medical_history": "Mild Asthma",
@@ -303,13 +266,7 @@ Replace all writable fields of an existing student.
 
 ```json
 {
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4A",
-  "contact_no": "09123456780"
+  "student_id": 2026001234
 }
 ```
 
@@ -317,14 +274,7 @@ Replace all writable fields of an existing student.
 
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4A",
-  "contact_no": "09123456780",
+  "student_id": 2026001234,
   "health_records_count": 1,
   "created_at": "2026-08-28T10:00:00Z",
   "updated_at": "2026-08-28T11:00:00Z"
@@ -345,8 +295,7 @@ Update one or more fields of an existing student.
 
 ```json
 {
-  "section": "4B",
-  "contact_no": "09991112233"
+  "student_id": 2026001234
 }
 ```
 
@@ -354,14 +303,7 @@ Update one or more fields of an existing student.
 
 ```json
 {
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4B",
-  "contact_no": "09991112233",
+  "student_id": 2026001234,
   "health_records_count": 1,
   "created_at": "2026-08-28T10:00:00Z",
   "updated_at": "2026-08-28T11:15:00Z"
@@ -396,8 +338,7 @@ Retrieve all health records for a specific student, ordered by visit date descen
 [
   {
     "health_id": 10,
-    "student_id": 1,
-    "student_name": "Juan Dela Cruz",
+    "student_id": 2026001234,
     "allergies": "Penicillin",
     "blood_type": "O+",
     "medical_history": "Mild Asthma",
@@ -442,8 +383,7 @@ Create a new health record directly associated with the specified student.
 ```json
 {
   "health_id": 11,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin",
   "blood_type": "O+",
   "medical_history": "None",
@@ -474,7 +414,7 @@ Retrieve all clinic health records with optional filtering by student ID, blood 
 | :--- | :--- | :--- | :--- |
 | `student_id` | `string` / `integer` | No | Filter records by associated student identifier |
 | `blood_type` | `string` | No | Filter by blood type (`A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`, `Unknown`) |
-| `search` | `string` | No | Search across student name, allergies, consultation, or medical history |
+| `search` | `string` | No | Search across allergies, consultation, or medical history |
 
 #### Response (`200 OK`)
 
@@ -482,8 +422,7 @@ Retrieve all clinic health records with optional filtering by student ID, blood 
 [
   {
     "health_id": 10,
-    "student_id": 1,
-    "student_name": "Juan Dela Cruz",
+    "student_id": 2026001234,
     "allergies": "Penicillin",
     "blood_type": "O+",
     "medical_history": "Mild Asthma",
@@ -526,7 +465,7 @@ Create a new clinical consultation record.
 
 ```json
 {
-  "student_id": 1,
+  "student_id": 2026001234,
   "blood_type": "O+",
   "allergies": "Penicillin",
   "medical_history": "Mild Asthma",
@@ -543,8 +482,7 @@ Create a new clinical consultation record.
 ```json
 {
   "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin",
   "blood_type": "O+",
   "medical_history": "Mild Asthma",
@@ -578,8 +516,7 @@ Retrieve details of a single health record by `health_id`.
 ```json
 {
   "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin",
   "blood_type": "O+",
   "medical_history": "Mild Asthma",
@@ -607,7 +544,7 @@ Update all fields of an existing health record.
 
 ```json
 {
-  "student_id": 1,
+  "student_id": 2026001234,
   "blood_type": "O+",
   "allergies": "Penicillin, Dust",
   "medical_history": "Mild Asthma",
@@ -624,8 +561,7 @@ Update all fields of an existing health record.
 ```json
 {
   "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin, Dust",
   "blood_type": "O+",
   "medical_history": "Mild Asthma",
@@ -663,8 +599,7 @@ Partially update one or more fields of an existing health record.
 ```json
 {
   "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
+  "student_id": 2026001234,
   "allergies": "Penicillin, Dust",
   "blood_type": "O+",
   "medical_history": "Mild Asthma",
@@ -718,6 +653,8 @@ Empty body.
   }
 }
 ```
+
+---
 
 ### 2. OpenAPI Schema
 

@@ -3,7 +3,7 @@ info:
   title: IDSC Clinic System API
   version: 1.0.0
   description: OpenAPI documentation for the IDSC Clinic System backend. Provides
-    endpoints for managing student records, health records, clinical consultations,
+    endpoints for managing student records and health records, clinical consultations,
     vital signs, medical histories, and allergies.
 paths:
   /api/health-records/:
@@ -32,8 +32,8 @@ paths:
         name: search
         schema:
           type: string
-        description: Search keyword matching student name, allergies, consultation
-          notes, medical history, or student ID
+        description: Search keyword matching allergies, consultation notes, medical history,
+          or student ID
       - in: query
         name: student_id
         schema:
@@ -203,35 +203,14 @@ paths:
   /api/students/:
     get:
       operationId: students_list
-      description: Retrieve a list of all students with optional search and filtering
-        by course, section, or sex.
+      description: Retrieve a list of all students with optional search by student ID.
       summary: List all students
       parameters:
-      - in: query
-        name: course
-        schema:
-          type: string
-        description: Filter by degree program / course (case-insensitive exact match)
       - in: query
         name: search
         schema:
           type: string
-        description: Search keyword matching first name, last name, course, section,
-          or student ID
-      - in: query
-        name: section
-        schema:
-          type: string
-        description: Filter by section (case-insensitive exact match)
-      - in: query
-        name: sex
-        schema:
-          type: string
-          enum:
-          - Female
-          - Male
-          - Other
-        description: Filter by sex (Male, Female, Other)
+        description: Search keyword matching student ID
       tags:
       - Students
       security:
@@ -249,7 +228,8 @@ paths:
           description: ''
     post:
       operationId: students_create
-      description: Register a new student record in the IDSC Clinic System.
+      description: Register a new student record in the IDSC Clinic System with an externally
+        supplied student_id.
       summary: Create a new student
       tags:
       - Students
@@ -304,7 +284,7 @@ paths:
           description: ''
     put:
       operationId: students_update
-      description: Update all fields of an existing student record.
+      description: Update fields of an existing student record.
       summary: Update a student
       parameters:
       - in: path
@@ -498,9 +478,6 @@ components:
         student_id:
           type: integer
           description: The ID of the student associated with this health record
-        student_name:
-          type: string
-          readOnly: true
         allergies:
           type: string
           description: Known allergies (e.g. penicillin, peanuts, pollen)
@@ -559,7 +536,6 @@ components:
       - created_at
       - health_id
       - student_id
-      - student_name
       - updated_at
     HealthRecordRequest:
       type: object
@@ -673,102 +649,20 @@ components:
       type: object
       description: |-
         Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
+        Handles student CRUD with externally supplied student_id.
       properties:
-        first_name:
-          type: string
-          minLength: 1
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          minLength: 1
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          minLength: 1
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          minLength: 1
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
-    SexEnum:
-      enum:
-      - Male
-      - Female
-      - Other
-      type: string
-      description: |-
-        * `Male` - Male
-        * `Female` - Female
-        * `Other` - Other
+        student_id:
+          type: integer
+          description: Externally supplied unique student identifier
     Student:
       type: object
       description: |-
         Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
+        Handles student CRUD with externally supplied student_id.
       properties:
         student_id:
           type: integer
-          readOnly: true
-          description: Auto-incrementing unique student identifier
-        first_name:
-          type: string
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
+          description: Externally supplied unique student identifier
         health_records_count:
           type: integer
           readOnly: true
@@ -783,57 +677,14 @@ components:
           readOnly: true
           description: Timestamp when student record was last updated
       required:
-      - course
-      - created_at
-      - first_name
-      - health_records_count
-      - last_name
-      - section
       - student_id
-      - updated_at
     StudentDetail:
       type: object
       description: Detailed Student Serializer including nested health records history.
       properties:
         student_id:
           type: integer
-          readOnly: true
-          description: Auto-incrementing unique student identifier
-        first_name:
-          type: string
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
+          description: Externally supplied unique student identifier
         health_records_count:
           type: integer
           readOnly: true
@@ -853,65 +704,18 @@ components:
             $ref: '#/components/schemas/HealthRecord'
           readOnly: true
       required:
-      - course
-      - created_at
-      - first_name
-      - health_records
-      - health_records_count
-      - last_name
-      - section
       - student_id
-      - updated_at
     StudentRequest:
       type: object
       description: |-
         Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
+        Handles student CRUD with externally supplied student_id.
       properties:
-        first_name:
-          type: string
-          minLength: 1
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          minLength: 1
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          minLength: 1
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          minLength: 1
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
+        student_id:
+          type: integer
+          description: Externally supplied unique student identifier
       required:
-      - course
-      - first_name
-      - last_name
-      - section
+      - student_id
   securitySchemes:
     basicAuth:
       type: http
