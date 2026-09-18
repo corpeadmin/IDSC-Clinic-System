@@ -173,7 +173,8 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': (
         'OpenAPI documentation for the IDSC Clinic System backend. '
         'Provides endpoints for managing student records, health records, clinical consultations, '
-        'vital signs, medical histories, and allergies.'
+        'vital signs, medical histories, allergies, view-only health-record access for the '
+        'Student Portal System, and health status records for the Faculty System.'
     ),
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,

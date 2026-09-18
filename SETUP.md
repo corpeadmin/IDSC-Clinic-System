@@ -479,12 +479,14 @@ http://127.0.0.1:8000/
 
 Important endpoints include:
 
-| Endpoint               | Purpose            |
-| :--------------------- | :----------------- |
-| `/`                    | API root/discovery |
-| `/api/students/`       | Students API       |
-| `/api/health-records/` | Health Records API |
-| `/admin/`              | Django Admin       |
+| Endpoint                                         | Purpose                              |
+| :----------------------------------------------- | :----------------------------------- |
+| `/`                                              | API root/discovery                   |
+| `/api/students/`                                 | Students API                         |
+| `/api/health-records/`                           | Health Records API                   |
+| `/api/student-portal/health-records/`            | Student Portal Health Records API (view-only) |
+| `/api/health-statuses/`                          | Health Status API                    |
+| `/admin/`                                        | Django Admin                         |
 
 ---
 

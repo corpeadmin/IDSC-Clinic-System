@@ -135,3 +135,52 @@ class HealthRecord(models.Model):
     def __str__(self):
         visit_str = self.visit.strftime('%Y-%m-%d %H:%M') if self.visit else 'N/A'
         return f"Record #{self.health_id} - Student: {self.student_id} ({visit_str})"
+
+
+class HealthStatus(models.Model):
+    """
+    HealthStatus model representing the current health status reported for a specific student.
+    Consumed via CRUD API by the external Faculty System.
+    """
+    status_id = models.BigAutoField(
+        primary_key=True,
+        help_text="Unique health status identifier"
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='health_statuses',
+        db_column='student_id',
+        help_text="The student associated with this health status"
+    )
+    health_status = models.TextField(
+        blank=True,
+        default='',
+        help_text="Health status details reported for the student"
+    )
+    date = models.DateTimeField(
+        default=timezone.now,
+        help_text="Date and time the health status was recorded"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when health status was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Timestamp when health status was last updated"
+    )
+
+    class Meta:
+        db_table = 'health_statuses'
+        ordering = ['-date', '-status_id']
+        verbose_name = 'Health Status'
+        verbose_name_plural = 'Health Statuses'
+        indexes = [
+            models.Index(fields=['student', '-date'], name='idx_hs_student_date'),
+            models.Index(fields=['-date'], name='idx_hs_date'),
+        ]
+
+    def __str__(self):
+        date_str = self.date.strftime('%Y-%m-%d %H:%M') if self.date else 'N/A'
+        return f"Status #{self.status_id} - Student: {self.student_id} ({date_str})"

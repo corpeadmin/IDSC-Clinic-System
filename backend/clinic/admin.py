@@ -4,7 +4,7 @@ Registers Student and HealthRecord models with rich list displays, filters, sear
 """
 
 from django.contrib import admin
-from .models import Student, HealthRecord
+from .models import Student, HealthRecord, HealthStatus
 
 
 class HealthRecordInline(admin.TabularInline):
@@ -78,6 +78,40 @@ class HealthRecordAdmin(admin.ModelAdmin):
         }),
         ('Medical Information', {
             'fields': ('allergies', 'medical_history', 'medication', 'consultation')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(HealthStatus)
+class HealthStatusAdmin(admin.ModelAdmin):
+    """Admin configuration for HealthStatus model."""
+    list_display = (
+        'status_id',
+        'student',
+        'health_status',
+        'date',
+        'created_at',
+    )
+    list_filter = (
+        'date',
+    )
+    search_fields = (
+        'student__student_id',
+        'health_status',
+    )
+    ordering = ('-date', '-status_id')
+    raw_id_fields = ('student',)
+    fieldsets = (
+        ('Student Reference', {
+            'fields': ('student',)
+        }),
+        ('Status Information', {
+            'fields': ('health_status', 'date')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),

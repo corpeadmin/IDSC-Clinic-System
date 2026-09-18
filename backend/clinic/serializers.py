@@ -5,7 +5,7 @@ Provides full input validation, relationship handling, and serialization.
 
 from datetime import date
 from rest_framework import serializers
-from .models import Student, HealthRecord, BloodTypeChoices
+from .models import Student, HealthRecord, HealthStatus, BloodTypeChoices
 
 
 class HealthRecordSerializer(serializers.ModelSerializer):
@@ -60,6 +60,31 @@ class HealthRecordSerializer(serializers.ModelSerializer):
             valid_choices = ", ".join(BloodTypeChoices.values)
             raise serializers.ValidationError(f"Invalid blood type. Valid options are: {valid_choices}")
         return value
+
+
+class HealthStatusSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the HealthStatus model.
+    Handles foreign-key relationship with Student via student_id.
+    """
+    # Accept and display student_id as the primary key of the related Student
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=Student.objects.all(),
+        source='student',
+        help_text="The ID of the student associated with this health status"
+    )
+
+    class Meta:
+        model = HealthStatus
+        fields = [
+            'status_id',
+            'student_id',
+            'health_status',
+            'date',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['status_id', 'created_at', 'updated_at']
 
 
 class StudentSerializer(serializers.ModelSerializer):

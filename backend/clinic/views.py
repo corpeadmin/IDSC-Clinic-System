@@ -12,11 +12,12 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
-from .models import Student, HealthRecord
+from .models import Student, HealthRecord, HealthStatus
 from .serializers import (
     StudentSerializer,
     StudentDetailSerializer,
     HealthRecordSerializer,
+    HealthStatusSerializer,
 )
 
 
@@ -245,3 +246,94 @@ class HealthRecordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(filters)
 
         return queryset
+
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Student Portal'],
+        summary="List all health records for the Student Portal",
+        description="View-only endpoint for the Student Portal System. Returns all available health-record data.",
+        responses={200: HealthRecordSerializer(many=True)},
+    ),
+    retrieve=extend_schema(
+        tags=['Student Portal'],
+        operation_id='student_portal_health_records_retrieve',
+        summary="Retrieve a specific student's health records",
+        description="View-only endpoint for the Student Portal System. Returns the health records associated with the specified student_id.",
+        responses={200: HealthRecordSerializer(many=True)},
+    ),
+)
+class StudentPortalHealthRecordViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only ViewSet exposing health-record data to the external Student Portal System.
+    - GET /api/student-portal/health-records/ : List all health records
+    - GET /api/student-portal/health-records/<student_id>/ : List all health records for a specific student
+    This API is view-only; it does not expose create, update, or delete operations.
+    """
+    queryset = HealthRecord.objects.select_related('student').all()
+    serializer_class = HealthRecordSerializer
+    lookup_field = 'student_id'
+    lookup_value_regex = r'[^/]+'
+
+    def retrieve(self, request, *args, **kwargs):
+        student = get_object_or_404(Student, student_id=kwargs.get('student_id'))
+        records = student.health_records.all().order_by('-visit', '-health_id')
+        serializer = self.get_serializer(records, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=['Health Status'],
+        summary="List all health statuses",
+        description="Retrieve a list of all health status records. Consumed by the external Faculty System.",
+        responses={200: HealthStatusSerializer(many=True)},
+    ),
+    retrieve=extend_schema(
+        tags=['Health Status'],
+        summary="Retrieve a health status",
+        description="Retrieve details of a specific health status record by status_id.",
+        responses={200: HealthStatusSerializer},
+    ),
+    create=extend_schema(
+        tags=['Health Status'],
+        summary="Create a health status",
+        description="Create a new health status record associated with a student.",
+        request=HealthStatusSerializer,
+        responses={201: HealthStatusSerializer},
+    ),
+    update=extend_schema(
+        tags=['Health Status'],
+        summary="Update a health status",
+        description="Update all fields of an existing health status record.",
+        request=HealthStatusSerializer,
+        responses={200: HealthStatusSerializer},
+    ),
+    partial_update=extend_schema(
+        tags=['Health Status'],
+        summary="Partially update a health status",
+        description="Partially update one or more fields of an existing health status record.",
+        request=HealthStatusSerializer,
+        responses={200: HealthStatusSerializer},
+    ),
+    destroy=extend_schema(
+        tags=['Health Status'],
+        summary="Delete a health status",
+        description="Delete an existing health status record by status_id.",
+        responses={204: None},
+    ),
+)
+class HealthStatusViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Health Status records. Consumed by the external Faculty System.
+    Supports complete CRUD operations:
+    - GET /api/health-statuses/ : List all health statuses
+    - POST /api/health-statuses/ : Create a health status
+    - GET /api/health-statuses/<status_id>/ : Retrieve a single status
+    - PUT /api/health-statuses/<status_id>/ : Fully update a status
+    - PATCH /api/health-statuses/<status_id>/ : Partially update a status
+    - DELETE /api/health-statuses/<status_id>/ : Delete a status
+    """
+    queryset = HealthStatus.objects.select_related('student').all()
+    serializer_class = HealthStatusSerializer
+    lookup_field = 'status_id'

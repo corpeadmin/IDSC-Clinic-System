@@ -28,13 +28,23 @@ Interactive API documentation and comprehensive reference for the IDSC Clinic Sy
   - [4. Fully Update Health Record](#4-fully-update-health-record)
   - [5. Partially Update Health Record](#5-partially-update-health-record)
   - [6. Delete Health Record](#6-delete-health-record)
+- [Student Portal Health Records API](#student-portal-health-records-api)
+  - [1. List All Health Records (Student Portal)](#1-list-all-health-records-student-portal)
+  - [2. List Health Records for a Student (Student Portal)](#2-list-health-records-for-a-student-student-portal)
+- [Health Status API](#health-status-api)
+  - [1. List Health Statuses](#1-list-health-statuses)
+  - [2. Create Health Status](#2-create-health-status)
+  - [3. Retrieve Health Status](#3-retrieve-health-status)
+  - [4. Fully Update Health Status](#4-fully-update-health-status)
+  - [5. Partially Update Health Status](#5-partially-update-health-status)
+  - [6. Delete Health Status](#6-delete-health-status)
 - [System & Discovery Endpoints](#system--discovery-endpoints)
 
 ---
 
 ## Overview
 
-The IDSC Clinic System API provides complete CRUD functionality for managing clinic operations and medical consultation records. Student identifiers are supplied by an external Registrar system.
+The IDSC Clinic System API provides complete CRUD functionality for managing clinic operations and medical consultation records. Student identifiers are supplied by an external Registrar system. It also exposes a view-only Health Record API for the external Student Portal System and a full Health Status CRUD API for the external Faculty System.
 
 - **API Version:** `1.0.0`
 - **Format:** JSON (`application/json`)
@@ -132,6 +142,14 @@ All API errors return standardized JSON structures processed by the backend exce
 | `PUT` | `/api/health-records/{health_id}/` | Update all fields of a health record |
 | `PATCH` | `/api/health-records/{health_id}/` | Partially update fields of a health record |
 | `DELETE` | `/api/health-records/{health_id}/` | Delete a health record |
+| `GET` | `/api/student-portal/health-records/` | (Student Portal) List all health records — view-only |
+| `GET` | `/api/student-portal/health-records/{student_id}/` | (Student Portal) List health records for a student — view-only |
+| `GET` | `/api/health-statuses/` | List all health statuses |
+| `POST` | `/api/health-statuses/` | Create a new health status |
+| `GET` | `/api/health-statuses/{status_id}/` | Retrieve details of a health status |
+| `PUT` | `/api/health-statuses/{status_id}/` | Update all fields of a health status |
+| `PATCH` | `/api/health-statuses/{status_id}/` | Partially update fields of a health status |
+| `DELETE` | `/api/health-statuses/{status_id}/` | Delete a health status |
 | `GET` | `/` | API discovery and health status endpoint |
 | `GET` | `/api/schema/` | OpenAPI 3.0 schema file download |
 | `GET` | `/api/docs/` | Swagger UI documentation |
@@ -628,6 +646,259 @@ Empty body.
 
 ---
 
+## Student Portal Health Records API
+
+View-only endpoints exposed for the external **Student Portal System**. Only `GET` operations are available; create, update, and delete operations are **not** exposed. No authentication is required.
+
+### 1. List All Health Records (Student Portal)
+
+Retrieve all available health-record data.
+
+- **HTTP Method:** `GET`
+- **Path:** `/api/student-portal/health-records/`
+
+#### Response (`200 OK`)
+
+```json
+[
+  {
+    "health_id": 10,
+    "student_id": 2026001234,
+    "allergies": "Penicillin",
+    "blood_type": "O+",
+    "medical_history": "Mild Asthma",
+    "medication": "Salbutamol",
+    "weight": "65.50",
+    "height": "172.00",
+    "visit": "2026-08-28T09:30:00Z",
+    "consultation": "Patient presented with dizziness.",
+    "created_at": "2026-08-28T09:35:00Z",
+    "updated_at": "2026-08-28T09:35:00Z"
+  }
+]
+```
+
+---
+
+### 2. List Health Records for a Student (Student Portal)
+
+Retrieve the health records associated with a specific student.
+
+- **HTTP Method:** `GET`
+- **Path:** `/api/student-portal/health-records/{student_id}/`
+
+#### Path Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `student_id` | `integer` | **Yes** | Externally supplied unique student identifier |
+
+#### Response (`200 OK`)
+
+```json
+[
+  {
+    "health_id": 10,
+    "student_id": 2026001234,
+    "allergies": "Penicillin",
+    "blood_type": "O+",
+    "medical_history": "Mild Asthma",
+    "medication": "Salbutamol",
+    "weight": "65.50",
+    "height": "172.00",
+    "visit": "2026-08-28T09:30:00Z",
+    "consultation": "Patient presented with dizziness.",
+    "created_at": "2026-08-28T09:35:00Z",
+    "updated_at": "2026-08-28T09:35:00Z"
+  }
+]
+```
+
+#### Error Responses
+- `404 Not Found`: No student exists with the given `student_id`.
+
+---
+
+## Health Status API
+
+Full CRUD API consumed by the external **Faculty System**. No authentication is required.
+
+### 1. List Health Statuses
+
+Retrieve a list of all health status records.
+
+- **HTTP Method:** `GET`
+- **Path:** `/api/health-statuses/`
+
+#### Response (`200 OK`)
+
+```json
+[
+  {
+    "status_id": 1,
+    "student_id": 2026001234,
+    "health_status": "Stable",
+    "date": "2026-09-18T10:00:00Z",
+    "created_at": "2026-09-18T10:00:00Z",
+    "updated_at": "2026-09-18T10:00:00Z"
+  }
+]
+```
+
+---
+
+### 2. Create Health Status
+
+Create a new health status record for a student.
+
+- **HTTP Method:** `POST`
+- **Path:** `/api/health-statuses/`
+- **Content-Type:** `application/json`
+
+#### Request Body Fields
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `student_id` | `integer` | **Yes** | ID of the student associated with this status |
+| `health_status` | `string` | No | Health status details reported for the student |
+| `date` | `string` (date-time: ISO 8601) | No | Date and time the status was recorded (defaults to now) |
+
+#### Example Request
+
+```json
+{
+  "student_id": 2026001234,
+  "health_status": "Stable",
+  "date": "2026-09-18T10:00:00Z"
+}
+```
+
+#### Response (`201 Created`)
+
+```json
+{
+  "status_id": 1,
+  "student_id": 2026001234,
+  "health_status": "Stable",
+  "date": "2026-09-18T10:00:00Z",
+  "created_at": "2026-09-18T10:00:00Z",
+  "updated_at": "2026-09-18T10:00:00Z"
+}
+```
+
+#### Error Responses
+- `400 Bad Request`: Invalid `student_id` or missing required field (`student_id`).
+
+---
+
+### 3. Retrieve Health Status
+
+Retrieve details of a single health status record by `status_id`.
+
+- **HTTP Method:** `GET`
+- **Path:** `/api/health-statuses/{status_id}/`
+
+#### Path Parameters
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status_id` | `integer` | **Yes** | Unique health status identifier |
+
+#### Response (`200 OK`)
+
+```json
+{
+  "status_id": 1,
+  "student_id": 2026001234,
+  "health_status": "Stable",
+  "date": "2026-09-18T10:00:00Z",
+  "created_at": "2026-09-18T10:00:00Z",
+  "updated_at": "2026-09-18T10:00:00Z"
+}
+```
+
+#### Error Responses
+- `404 Not Found`: No health status exists with the given `status_id`.
+
+---
+
+### 4. Fully Update Health Status
+
+Replace all writable fields of an existing health status record.
+
+- **HTTP Method:** `PUT`
+- **Path:** `/api/health-statuses/{status_id}/`
+- **Content-Type:** `application/json`
+
+#### Example Request
+
+```json
+{
+  "student_id": 2026001234,
+  "health_status": "Recovered",
+  "date": "2026-09-18T12:00:00Z"
+}
+```
+
+#### Response (`200 OK`)
+
+```json
+{
+  "status_id": 1,
+  "student_id": 2026001234,
+  "health_status": "Recovered",
+  "date": "2026-09-18T12:00:00Z",
+  "created_at": "2026-09-18T10:00:00Z",
+  "updated_at": "2026-09-18T14:00:00Z"
+}
+```
+
+---
+
+### 5. Partially Update Health Status
+
+Update one or more fields of an existing health status record.
+
+- **HTTP Method:** `PATCH`
+- **Path:** `/api/health-statuses/{status_id}/`
+- **Content-Type:** `application/json`
+
+#### Example Request
+
+```json
+{
+  "health_status": "Improved"
+}
+```
+
+#### Response (`200 OK`)
+
+```json
+{
+  "status_id": 1,
+  "student_id": 2026001234,
+  "health_status": "Improved",
+  "date": "2026-09-18T12:00:00Z",
+  "created_at": "2026-09-18T10:00:00Z",
+  "updated_at": "2026-09-18T14:30:00Z"
+}
+```
+
+---
+
+### 6. Delete Health Status
+
+Delete an existing health status record.
+
+- **HTTP Method:** `DELETE`
+- **Path:** `/api/health-statuses/{status_id}/`
+
+#### Response (`204 No Content`)
+
+Empty body.
+
+---
+
 ## System & Discovery Endpoints
 
 ### 1. API Root / Discovery Endpoint
@@ -646,6 +917,9 @@ Empty body.
     "students": "/api/students/",
     "health_records": "/api/health-records/",
     "student_health_records": "/api/students/<student_id>/health-records/",
+    "student_portal_health_records": "/api/student-portal/health-records/",
+    "student_portal_student_health_records": "/api/student-portal/health-records/<student_id>/",
+    "health_statuses": "/api/health-statuses/",
     "schema": "/api/schema/",
     "docs": "/api/docs/",
     "redoc": "/api/redoc/",

@@ -9,7 +9,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from clinic.models import Student, HealthRecord, BloodTypeChoices
+from clinic.models import Student, HealthRecord, HealthStatus, BloodTypeChoices
 
 
 class StudentModelTests(APITestCase):
@@ -314,6 +314,165 @@ class StudentHealthRecordRelationshipEndpointTests(APITestCase):
         }
         response = self.client.post('/api/students/999999/health-records/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class StudentPortalHealthRecordAPITests(APITestCase):
+    """Integration tests for the view-only Student Portal health record endpoints."""
+
+    def setUp(self):
+        self.student1 = Student.objects.create(
+            student_id=2026000012
+        )
+        self.student2 = Student.objects.create(
+            student_id=2026000013
+        )
+        self.record1 = HealthRecord.objects.create(
+            student=self.student1,
+            allergies="Pollen",
+            blood_type=BloodTypeChoices.B_POSITIVE,
+            visit=timezone.now() - timedelta(days=2),
+            consultation="First visit for rhinitis."
+        )
+        self.record2 = HealthRecord.objects.create(
+            student=self.student1,
+            allergies="Pollen",
+            blood_type=BloodTypeChoices.B_POSITIVE,
+            visit=timezone.now(),
+            consultation="Second visit for follow up."
+        )
+        self.record3 = HealthRecord.objects.create(
+            student=self.student2,
+            blood_type=BloodTypeChoices.O_NEGATIVE,
+            consultation="Annual physical exam."
+        )
+
+    def test_get_all_health_records(self):
+        """GET /api/student-portal/health-records/ returns all health records."""
+        response = self.client.get('/api/student-portal/health-records/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+
+    def test_get_students_health_records(self):
+        """GET /api/student-portal/health-records/<student_id>/ returns only that student's records."""
+        response = self.client.get(f'/api/student-portal/health-records/{self.student1.student_id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        for item in response.data:
+            self.assertEqual(item['student_id'], self.student1.student_id)
+
+    def test_get_health_records_for_nonexistent_student_returns_404(self):
+        """GET /api/student-portal/health-records/<student_id>/ for non-existent student returns 404."""
+        response = self.client.get('/api/student-portal/health-records/999999/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_post_not_allowed(self):
+        """POST /api/student-portal/health-records/ returns 405 (view-only API)."""
+        response = self.client.post('/api/student-portal/health-records/', {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class HealthStatusModelTests(APITestCase):
+    """Unit tests for the HealthStatus database model and relationships."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            student_id=2026000014
+        )
+        self.status = HealthStatus.objects.create(
+            student=self.student,
+            health_status="Healthy",
+            date=timezone.now()
+        )
+
+    def test_health_status_creation_and_relationship(self):
+        """Verify health status creation and FK relationship with Student."""
+        self.assertEqual(self.status.student, self.student)
+        self.assertEqual(self.status.student_id, self.student.student_id)
+        self.assertEqual(self.status.health_status, "Healthy")
+        self.assertEqual(self.student.health_statuses.count(), 1)
+
+    def test_cascade_delete_student_deletes_statuses(self):
+        """Verify ON DELETE CASCADE removes associated health statuses when student is deleted."""
+        status_id = self.status.status_id
+        self.student.delete()
+        self.assertFalse(HealthStatus.objects.filter(status_id=status_id).exists())
+
+
+class HealthStatusAPITests(APITestCase):
+    """Integration tests for Health Status CRUD API endpoints."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            student_id=2026000015
+        )
+        self.status1 = HealthStatus.objects.create(
+            student=self.student,
+            health_status="Stable",
+            date=timezone.now()
+        )
+
+    def test_get_all_health_statuses(self):
+        """GET /api/health-statuses/ returns list of health statuses."""
+        response = self.client.get('/api/health-statuses/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['student_id'], self.student.student_id)
+
+    def test_create_health_status_success(self):
+        """POST /api/health-statuses/ creates a new health status with integer student_id."""
+        payload = {
+            "student_id": self.student.student_id,
+            "health_status": "Has cold",
+            "date": timezone.now().isoformat()
+        }
+        response = self.client.post('/api/health-statuses/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['student_id'], self.student.student_id)
+        self.assertEqual(response.data['health_status'], "Has cold")
+        self.assertEqual(HealthStatus.objects.count(), 2)
+
+    def test_create_health_status_invalid_student_fails(self):
+        """POST /api/health-statuses/ with invalid student_id returns 400 Bad Request."""
+        payload = {
+            "student_id": 999999,
+            "health_status": "Unwell"
+        }
+        response = self.client.post('/api/health-statuses/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('student_id', str(response.data))
+
+    def test_get_single_health_status(self):
+        """GET /api/health-statuses/<status_id>/ retrieves status."""
+        response = self.client.get(f'/api/health-statuses/{self.status1.status_id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status_id'], self.status1.status_id)
+        self.assertEqual(response.data['student_id'], self.student.student_id)
+
+    def test_put_update_health_status(self):
+        """PUT /api/health-statuses/<status_id>/ fully updates status."""
+        payload = {
+            "student_id": self.student.student_id,
+            "health_status": "Recovered",
+            "date": timezone.now().isoformat()
+        }
+        response = self.client.put(f'/api/health-statuses/{self.status1.status_id}/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.status1.refresh_from_db()
+        self.assertEqual(self.status1.health_status, "Recovered")
+
+    def test_patch_update_health_status(self):
+        """PATCH /api/health-statuses/<status_id>/ partially updates status."""
+        payload = {"health_status": "Improved"}
+        response = self.client.patch(f'/api/health-statuses/{self.status1.status_id}/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.status1.refresh_from_db()
+        self.assertEqual(self.status1.health_status, "Improved")
+
+    def test_delete_health_status(self):
+        """DELETE /api/health-statuses/<status_id>/ deletes status (204 No Content)."""
+        response = self.client.delete(f'/api/health-statuses/{self.status1.status_id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(HealthStatus.objects.filter(status_id=self.status1.status_id).exists())
 
 
 class ErrorHandlingAndValidationTests(APITestCase):
