@@ -7,6 +7,233 @@ info:
     vital signs, medical histories, allergies, view-only health-record access for
     the Student Portal System, and health status records for the Faculty System.
 paths:
+  /api/auth/csrf/:
+    get:
+      operationId: auth_csrf_retrieve
+      description: Return a CSRF token and ensure the CSRF cookie is set.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticate a user and create a Django session.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Log out the current authenticated user and destroy the session.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Return information about the currently authenticated user.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/consultations/:
+    get:
+      operationId: consultations_list
+      description: Retrieve a list of all clinic consultations with optional filtering
+        by student ID or search keyword.
+      summary: List all consultations
+      parameters:
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search keyword matching consultation notes or student ID
+      - in: query
+        name: student_id
+        schema:
+          type: string
+        description: Filter consultations for a specific student by student ID
+      tags:
+      - Consultations
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consultation'
+          description: ''
+    post:
+      operationId: consultations_create
+      description: Create a new clinic consultation associated with a student.
+      summary: Create a consultation
+      tags:
+      - Consultations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+  /api/consultations/{consultation_id}/:
+    get:
+      operationId: consultations_retrieve
+      description: Retrieve details of a specific consultation by consultation_id.
+      summary: Retrieve a consultation
+      parameters:
+      - in: path
+        name: consultation_id
+        schema:
+          type: integer
+          description: Unique consultation identifier
+        required: true
+      tags:
+      - Consultations
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+    put:
+      operationId: consultations_update
+      description: Update all fields of an existing consultation.
+      summary: Update a consultation
+      parameters:
+      - in: path
+        name: consultation_id
+        schema:
+          type: integer
+          description: Unique consultation identifier
+        required: true
+      tags:
+      - Consultations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+    patch:
+      operationId: consultations_partial_update
+      description: Partially update one or more fields of an existing consultation.
+      summary: Partially update a consultation
+      parameters:
+      - in: path
+        name: consultation_id
+        schema:
+          type: integer
+          description: Unique consultation identifier
+        required: true
+      tags:
+      - Consultations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConsultationRequest'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
+    delete:
+      operationId: consultations_destroy
+      description: Delete an existing consultation by consultation_id.
+      summary: Delete a consultation
+      parameters:
+      - in: path
+        name: consultation_id
+        schema:
+          type: integer
+          description: Unique consultation identifier
+        required: true
+      tags:
+      - Consultations
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/health-records/:
     get:
       operationId: health_records_list
@@ -57,8 +284,7 @@ paths:
           description: ''
     post:
       operationId: health_records_create
-      description: Create a new clinic consultation / health record associated with
-        a student.
+      description: Create a new health record associated with a student.
       summary: Create a health record
       tags:
       - Health Records
@@ -591,11 +817,74 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/students/{student_id}/consultations/:
+    get:
+      operationId: students_consultations_list
+      description: Retrieve all clinic consultations for a specific student, ordered
+        by visit date descending.
+      summary: List consultations for a student
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+          pattern: ^[^/]+$
+        required: true
+      tags:
+      - Students
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Consultation'
+          description: ''
+    post:
+      operationId: students_consultations_create
+      description: Create a new clinic consultation for the specified student.
+      summary: Create consultation for a student
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+          pattern: ^[^/]+$
+        required: true
+      tags:
+      - Students
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+          description: ''
   /api/students/{student_id}/health-records/:
     get:
       operationId: students_health_records_list
-      description: Retrieve all health records and clinic consultations for a specific
-        student, ordered by visit date descending.
+      description: Retrieve all health records for a specific student.
       summary: List health records for a student
       parameters:
       - in: path
@@ -621,8 +910,7 @@ paths:
           description: ''
     post:
       operationId: students_health_records_create
-      description: Create a new clinic consultation / health record for the specified
-        student.
+      description: Create a new health record for the specified student.
       summary: Create health record for a student
       parameters:
       - in: path
@@ -683,11 +971,71 @@ components:
         * `O+` - O+
         * `O-` - O-
         * `Unknown` - Unknown
+    Consultation:
+      type: object
+      description: |-
+        Serializer for the Consultation model.
+        Handles foreign-key relationship with Student via student_id.
+      properties:
+        consultation_id:
+          type: integer
+          readOnly: true
+          description: Unique consultation identifier
+        student_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: The ID of the student associated with this consultation
+        consultation:
+          type: string
+          description: Clinic consultation notes, diagnosis, and treatment provided
+        visits:
+          type: string
+          format: date-time
+          description: Date and time of clinic visit
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Timestamp when consultation was created
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Timestamp when consultation was last updated
+      required:
+      - consultation_id
+      - created_at
+      - student_id
+      - updated_at
+    ConsultationRequest:
+      type: object
+      description: |-
+        Serializer for the Consultation model.
+        Handles foreign-key relationship with Student via student_id.
+      properties:
+        student_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: The ID of the student associated with this consultation
+        consultation:
+          type: string
+          description: Clinic consultation notes, diagnosis, and treatment provided
+        visits:
+          type: string
+          format: date-time
+          description: Date and time of clinic visit
+      required:
+      - student_id
     HealthRecord:
       type: object
       description: |-
         Serializer for the HealthRecord model.
         Handles foreign-key relationship with Student via student_id.
+        Clinic consultations and visit dates live in the separate Consultation model.
       properties:
         health_id:
           type: integer
@@ -736,13 +1084,6 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Height in centimeters (cm)
-        visit:
-          type: string
-          format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
         created_at:
           type: string
           format: date-time
@@ -763,6 +1104,7 @@ components:
       description: |-
         Serializer for the HealthRecord model.
         Handles foreign-key relationship with Student via student_id.
+        Clinic consultations and visit dates live in the separate Consultation model.
       properties:
         student_id:
           type: integer
@@ -807,13 +1149,6 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Height in centimeters (cm)
-        visit:
-          type: string
-          format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
       required:
       - student_id
     HealthStatus:
@@ -875,11 +1210,31 @@ components:
           description: Date and time the health status was recorded
       required:
       - student_id
+    PatchedConsultationRequest:
+      type: object
+      description: |-
+        Serializer for the Consultation model.
+        Handles foreign-key relationship with Student via student_id.
+      properties:
+        student_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: The ID of the student associated with this consultation
+        consultation:
+          type: string
+          description: Clinic consultation notes, diagnosis, and treatment provided
+        visits:
+          type: string
+          format: date-time
+          description: Date and time of clinic visit
     PatchedHealthRecordRequest:
       type: object
       description: |-
         Serializer for the HealthRecord model.
         Handles foreign-key relationship with Student via student_id.
+        Clinic consultations and visit dates live in the separate Consultation model.
       properties:
         student_id:
           type: integer
@@ -924,13 +1279,6 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
           nullable: true
           description: Height in centimeters (cm)
-        visit:
-          type: string
-          format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
     PatchedHealthStatusRequest:
       type: object
       description: |-
@@ -977,6 +1325,9 @@ components:
         health_records_count:
           type: integer
           readOnly: true
+        consultations_count:
+          type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -988,13 +1339,15 @@ components:
           readOnly: true
           description: Timestamp when student record was last updated
       required:
+      - consultations_count
       - created_at
       - health_records_count
       - student_id
       - updated_at
     StudentDetail:
       type: object
-      description: Detailed Student Serializer including nested health records history.
+      description: Detailed Student Serializer including nested health records and
+        consultation history.
       properties:
         student_id:
           type: integer
@@ -1003,6 +1356,9 @@ components:
           format: int64
           description: Externally supplied unique student identifier
         health_records_count:
+          type: integer
+          readOnly: true
+        consultations_count:
           type: integer
           readOnly: true
         created_at:
@@ -1020,7 +1376,14 @@ components:
           items:
             $ref: '#/components/schemas/HealthRecord'
           readOnly: true
+        consultations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consultation'
+          readOnly: true
       required:
+      - consultations
+      - consultations_count
       - created_at
       - health_records
       - health_records_count

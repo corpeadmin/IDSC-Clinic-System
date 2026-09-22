@@ -1,0 +1,2082 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "IDSC Clinic System API",
+        "version": "1.0.0",
+        "description": "OpenAPI documentation for the IDSC Clinic System backend. Provides endpoints for managing student records, health records, clinical consultations, vital signs, medical histories, allergies, view-only health-record access for the Student Portal System, and health status records for the Faculty System."
+    },
+    "paths": {
+        "/api/auth/csrf/": {
+            "get": {
+                "operationId": "auth_csrf_retrieve",
+                "description": "Return a CSRF token and ensure the CSRF cookie is set.",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/auth/login/": {
+            "post": {
+                "operationId": "auth_login_create",
+                "description": "Authenticate a user and create a Django session.",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout/": {
+            "post": {
+                "operationId": "auth_logout_create",
+                "description": "Log out the current authenticated user and destroy the session.",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/auth/me/": {
+            "get": {
+                "operationId": "auth_me_retrieve",
+                "description": "Return information about the currently authenticated user.",
+                "tags": [
+                    "auth"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/consultations/": {
+            "get": {
+                "operationId": "consultations_list",
+                "description": "Retrieve a list of all clinic consultations with optional filtering by student ID or search keyword.",
+                "summary": "List all consultations",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search keyword matching consultation notes or student ID"
+                    },
+                    {
+                        "in": "query",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter consultations for a specific student by student ID"
+                    }
+                ],
+                "tags": [
+                    "Consultations"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Consultation"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "consultations_create",
+                "description": "Create a new clinic consultation associated with a student.",
+                "summary": "Create a consultation",
+                "tags": [
+                    "Consultations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Consultation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/consultations/{consultation_id}/": {
+            "get": {
+                "operationId": "consultations_retrieve",
+                "description": "Retrieve details of a specific consultation by consultation_id.",
+                "summary": "Retrieve a consultation",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "consultation_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique consultation identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Consultations"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Consultation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "consultations_update",
+                "description": "Update all fields of an existing consultation.",
+                "summary": "Update a consultation",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "consultation_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique consultation identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Consultations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Consultation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "consultations_partial_update",
+                "description": "Partially update one or more fields of an existing consultation.",
+                "summary": "Partially update a consultation",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "consultation_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique consultation identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Consultations"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedConsultationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedConsultationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedConsultationRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Consultation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "consultations_destroy",
+                "description": "Delete an existing consultation by consultation_id.",
+                "summary": "Delete a consultation",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "consultation_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique consultation identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Consultations"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/health-records/": {
+            "get": {
+                "operationId": "health_records_list",
+                "description": "Retrieve a list of all health records with optional filtering by student ID, blood type, or search keyword.",
+                "summary": "List all health records",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "blood_type",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "A+",
+                                "A-",
+                                "AB+",
+                                "AB-",
+                                "B+",
+                                "B-",
+                                "O+",
+                                "O-",
+                                "Unknown"
+                            ]
+                        },
+                        "description": "Filter health records by blood type"
+                    },
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search keyword matching allergies, consultation notes, medical history, or student ID"
+                    },
+                    {
+                        "in": "query",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Filter health records for a specific student by student ID"
+                    }
+                ],
+                "tags": [
+                    "Health Records"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HealthRecord"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "health_records_create",
+                "description": "Create a new health record associated with a student.",
+                "summary": "Create a health record",
+                "tags": [
+                    "Health Records"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/health-records/{health_id}/": {
+            "get": {
+                "operationId": "health_records_retrieve",
+                "description": "Retrieve details of a specific health record by health_id.",
+                "summary": "Retrieve a health record",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "health_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health record identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Records"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "health_records_update",
+                "description": "Update all fields of an existing health record.",
+                "summary": "Update a health record",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "health_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health record identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Records"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "health_records_partial_update",
+                "description": "Partially update one or more fields of an existing health record.",
+                "summary": "Partially update a health record",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "health_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health record identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Records"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthRecordRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "health_records_destroy",
+                "description": "Delete an existing health record by health_id.",
+                "summary": "Delete a health record",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "health_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health record identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Records"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/health-statuses/": {
+            "get": {
+                "operationId": "health_statuses_list",
+                "description": "Retrieve a list of all health status records. Consumed by the external Faculty System.",
+                "summary": "List all health statuses",
+                "tags": [
+                    "Health Status"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HealthStatus"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "health_statuses_create",
+                "description": "Create a new health status record associated with a student.",
+                "summary": "Create a health status",
+                "tags": [
+                    "Health Status"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthStatus"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/health-statuses/{status_id}/": {
+            "get": {
+                "operationId": "health_statuses_retrieve",
+                "description": "Retrieve details of a specific health status record by status_id.",
+                "summary": "Retrieve a health status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "status_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health status identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Status"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthStatus"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "health_statuses_update",
+                "description": "Update all fields of an existing health status record.",
+                "summary": "Update a health status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "status_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health status identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Status"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthStatusRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthStatus"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "health_statuses_partial_update",
+                "description": "Partially update one or more fields of an existing health status record.",
+                "summary": "Partially update a health status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "status_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health status identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Status"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthStatusRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthStatusRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedHealthStatusRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthStatus"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "health_statuses_destroy",
+                "description": "Delete an existing health status record by status_id.",
+                "summary": "Delete a health status",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "status_id",
+                        "schema": {
+                            "type": "integer",
+                            "description": "Unique health status identifier"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Health Status"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/student-portal/health-records/": {
+            "get": {
+                "operationId": "student_portal_health_records_list",
+                "description": "View-only endpoint for the Student Portal System. Returns all available health-record data.",
+                "summary": "List all health records for the Student Portal",
+                "tags": [
+                    "Student Portal"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HealthRecord"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/student-portal/health-records/{student_id}/": {
+            "get": {
+                "operationId": "student_portal_health_records_retrieve",
+                "description": "View-only endpoint for the Student Portal System. Returns the health records associated with the specified student_id.",
+                "summary": "Retrieve a specific student's health records",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Student Portal"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HealthRecord"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/students/": {
+            "get": {
+                "operationId": "students_list",
+                "description": "Retrieve a list of all students with optional search by student ID.",
+                "summary": "List all students",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "search",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Search keyword matching student ID"
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Student"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "students_create",
+                "description": "Register a new student record in the IDSC Clinic System with an externally supplied student_id.",
+                "summary": "Create a new student",
+                "tags": [
+                    "Students"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Student"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/students/{student_id}/": {
+            "get": {
+                "operationId": "students_retrieve",
+                "description": "Retrieve complete details for a specific student by student_id, including full nested health records history.",
+                "summary": "Retrieve student details",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StudentDetail"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "put": {
+                "operationId": "students_update",
+                "description": "Update fields of an existing student record.",
+                "summary": "Update a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StudentRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Student"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "students_partial_update",
+                "description": "Partially update one or more fields of an existing student record.",
+                "summary": "Partially update a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedStudentRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedStudentRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedStudentRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Student"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "students_destroy",
+                "description": "Delete an existing student and all associated health records.",
+                "summary": "Delete a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/api/students/{student_id}/consultations/": {
+            "get": {
+                "operationId": "students_consultations_list",
+                "description": "Retrieve all clinic consultations for a specific student, ordered by visit date descending.",
+                "summary": "List consultations for a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Consultation"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "students_consultations_create",
+                "description": "Create a new clinic consultation for the specified student.",
+                "summary": "Create consultation for a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConsultationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Consultation"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/api/students/{student_id}/health-records/": {
+            "get": {
+                "operationId": "students_health_records_list",
+                "description": "Retrieve all health records for a specific student.",
+                "summary": "List health records for a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/HealthRecord"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            },
+            "post": {
+                "operationId": "students_health_records_create",
+                "description": "Create a new health record for the specified student.",
+                "summary": "Create health record for a student",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "student_id",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[^/]+$"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HealthRecordRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "cookieAuth": []
+                    },
+                    {
+                        "basicAuth": []
+                    },
+                    {}
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthRecord"
+                                }
+                            }
+                        },
+                        "description": ""
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "BlankEnum": {
+                "enum": [
+                    ""
+                ]
+            },
+            "BloodTypeEnum": {
+                "enum": [
+                    "A+",
+                    "A-",
+                    "B+",
+                    "B-",
+                    "AB+",
+                    "AB-",
+                    "O+",
+                    "O-",
+                    "Unknown"
+                ],
+                "type": "string",
+                "description": "* `A+` - A+\n* `A-` - A-\n* `B+` - B+\n* `B-` - B-\n* `AB+` - AB+\n* `AB-` - AB-\n* `O+` - O+\n* `O-` - O-\n* `Unknown` - Unknown"
+            },
+            "Consultation": {
+                "type": "object",
+                "description": "Serializer for the Consultation model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "consultation_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "Unique consultation identifier"
+                    },
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this consultation"
+                    },
+                    "consultation": {
+                        "type": "string",
+                        "description": "Clinic consultation notes, diagnosis, and treatment provided"
+                    },
+                    "visits": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time of clinic visit"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when consultation was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when consultation was last updated"
+                    }
+                },
+                "required": [
+                    "consultation_id",
+                    "created_at",
+                    "student_id",
+                    "updated_at"
+                ]
+            },
+            "ConsultationRequest": {
+                "type": "object",
+                "description": "Serializer for the Consultation model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this consultation"
+                    },
+                    "consultation": {
+                        "type": "string",
+                        "description": "Clinic consultation notes, diagnosis, and treatment provided"
+                    },
+                    "visits": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time of clinic visit"
+                    }
+                },
+                "required": [
+                    "student_id"
+                ]
+            },
+            "HealthRecord": {
+                "type": "object",
+                "description": "Serializer for the HealthRecord model.\nHandles foreign-key relationship with Student via student_id.\nClinic consultations and visit dates live in the separate Consultation model.",
+                "properties": {
+                    "health_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "Unique health record identifier"
+                    },
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health record"
+                    },
+                    "allergies": {
+                        "type": "string",
+                        "description": "Known allergies (e.g. penicillin, peanuts, pollen)"
+                    },
+                    "blood_type": {
+                        "description": "Blood type (e.g. A+, O+, etc.)\n\n* `A+` - A+\n* `A-` - A-\n* `B+` - B+\n* `B-` - B-\n* `AB+` - AB+\n* `AB-` - AB-\n* `O+` - O+\n* `O-` - O-\n* `Unknown` - Unknown",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BloodTypeEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BlankEnum"
+                            }
+                        ]
+                    },
+                    "medical_history": {
+                        "type": "string",
+                        "description": "Past medical history and chronic conditions (e.g. Asthma, Hypertension)"
+                    },
+                    "medication": {
+                        "type": "string",
+                        "description": "Current medications and prescriptions"
+                    },
+                    "weight": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Weight in kilograms (kg)"
+                    },
+                    "height": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Height in centimeters (cm)"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when health record was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when health record was last updated"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "health_id",
+                    "student_id",
+                    "updated_at"
+                ]
+            },
+            "HealthRecordRequest": {
+                "type": "object",
+                "description": "Serializer for the HealthRecord model.\nHandles foreign-key relationship with Student via student_id.\nClinic consultations and visit dates live in the separate Consultation model.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health record"
+                    },
+                    "allergies": {
+                        "type": "string",
+                        "description": "Known allergies (e.g. penicillin, peanuts, pollen)"
+                    },
+                    "blood_type": {
+                        "description": "Blood type (e.g. A+, O+, etc.)\n\n* `A+` - A+\n* `A-` - A-\n* `B+` - B+\n* `B-` - B-\n* `AB+` - AB+\n* `AB-` - AB-\n* `O+` - O+\n* `O-` - O-\n* `Unknown` - Unknown",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BloodTypeEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BlankEnum"
+                            }
+                        ]
+                    },
+                    "medical_history": {
+                        "type": "string",
+                        "description": "Past medical history and chronic conditions (e.g. Asthma, Hypertension)"
+                    },
+                    "medication": {
+                        "type": "string",
+                        "description": "Current medications and prescriptions"
+                    },
+                    "weight": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Weight in kilograms (kg)"
+                    },
+                    "height": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Height in centimeters (cm)"
+                    }
+                },
+                "required": [
+                    "student_id"
+                ]
+            },
+            "HealthStatus": {
+                "type": "object",
+                "description": "Serializer for the HealthStatus model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "status_id": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "Unique health status identifier"
+                    },
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health status"
+                    },
+                    "health_status": {
+                        "type": "string",
+                        "description": "Health status details reported for the student"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time the health status was recorded"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when health status was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when health status was last updated"
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "status_id",
+                    "student_id",
+                    "updated_at"
+                ]
+            },
+            "HealthStatusRequest": {
+                "type": "object",
+                "description": "Serializer for the HealthStatus model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health status"
+                    },
+                    "health_status": {
+                        "type": "string",
+                        "description": "Health status details reported for the student"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time the health status was recorded"
+                    }
+                },
+                "required": [
+                    "student_id"
+                ]
+            },
+            "PatchedConsultationRequest": {
+                "type": "object",
+                "description": "Serializer for the Consultation model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this consultation"
+                    },
+                    "consultation": {
+                        "type": "string",
+                        "description": "Clinic consultation notes, diagnosis, and treatment provided"
+                    },
+                    "visits": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time of clinic visit"
+                    }
+                }
+            },
+            "PatchedHealthRecordRequest": {
+                "type": "object",
+                "description": "Serializer for the HealthRecord model.\nHandles foreign-key relationship with Student via student_id.\nClinic consultations and visit dates live in the separate Consultation model.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health record"
+                    },
+                    "allergies": {
+                        "type": "string",
+                        "description": "Known allergies (e.g. penicillin, peanuts, pollen)"
+                    },
+                    "blood_type": {
+                        "description": "Blood type (e.g. A+, O+, etc.)\n\n* `A+` - A+\n* `A-` - A-\n* `B+` - B+\n* `B-` - B-\n* `AB+` - AB+\n* `AB-` - AB-\n* `O+` - O+\n* `O-` - O-\n* `Unknown` - Unknown",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BloodTypeEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BlankEnum"
+                            }
+                        ]
+                    },
+                    "medical_history": {
+                        "type": "string",
+                        "description": "Past medical history and chronic conditions (e.g. Asthma, Hypertension)"
+                    },
+                    "medication": {
+                        "type": "string",
+                        "description": "Current medications and prescriptions"
+                    },
+                    "weight": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Weight in kilograms (kg)"
+                    },
+                    "height": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+                        "nullable": true,
+                        "description": "Height in centimeters (cm)"
+                    }
+                }
+            },
+            "PatchedHealthStatusRequest": {
+                "type": "object",
+                "description": "Serializer for the HealthStatus model.\nHandles foreign-key relationship with Student via student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "The ID of the student associated with this health status"
+                    },
+                    "health_status": {
+                        "type": "string",
+                        "description": "Health status details reported for the student"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Date and time the health status was recorded"
+                    }
+                }
+            },
+            "PatchedStudentRequest": {
+                "type": "object",
+                "description": "Serializer for the Student model.\nHandles student CRUD with externally supplied student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "Externally supplied unique student identifier"
+                    }
+                }
+            },
+            "Student": {
+                "type": "object",
+                "description": "Serializer for the Student model.\nHandles student CRUD with externally supplied student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "Externally supplied unique student identifier"
+                    },
+                    "health_records_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "consultations_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when student record was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when student record was last updated"
+                    }
+                },
+                "required": [
+                    "consultations_count",
+                    "created_at",
+                    "health_records_count",
+                    "student_id",
+                    "updated_at"
+                ]
+            },
+            "StudentDetail": {
+                "type": "object",
+                "description": "Detailed Student Serializer including nested health records and consultation history.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "Externally supplied unique student identifier"
+                    },
+                    "health_records_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "consultations_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when student record was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Timestamp when student record was last updated"
+                    },
+                    "health_records": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HealthRecord"
+                        },
+                        "readOnly": true
+                    },
+                    "consultations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Consultation"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "consultations",
+                    "consultations_count",
+                    "created_at",
+                    "health_records",
+                    "health_records_count",
+                    "student_id",
+                    "updated_at"
+                ]
+            },
+            "StudentRequest": {
+                "type": "object",
+                "description": "Serializer for the Student model.\nHandles student CRUD with externally supplied student_id.",
+                "properties": {
+                    "student_id": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64",
+                        "description": "Externally supplied unique student identifier"
+                    }
+                },
+                "required": [
+                    "student_id"
+                ]
+            }
+        },
+        "securitySchemes": {
+            "basicAuth": {
+                "type": "http",
+                "scheme": "basic"
+            },
+            "cookieAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "sessionid"
+            }
+        }
+    }
+}
