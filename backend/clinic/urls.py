@@ -8,6 +8,7 @@ from .views import (
     StudentViewSet,
     HealthRecordViewSet,
     StudentPortalHealthRecordViewSet,
+    ConsultationViewSet,
     HealthStatusViewSet,
 )
 
@@ -16,6 +17,7 @@ router = DefaultRouter()
 router.register(r'students', StudentViewSet, basename='student')
 router.register(r'health-records', HealthRecordViewSet, basename='health-record')
 router.register(r'student-portal/health-records', StudentPortalHealthRecordViewSet, basename='student-portal-health-record')
+router.register(r'consultations', ConsultationViewSet, basename='consultation')
 router.register(r'health-statuses', HealthStatusViewSet, basename='health-status')
 
 urlpatterns = [

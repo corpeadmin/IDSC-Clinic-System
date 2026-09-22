@@ -4,12 +4,12 @@ Tests models, serializers, API endpoints, relationships, validation constraints,
 externally supplied primary keys, security, and error handling.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from clinic.models import Student, HealthRecord, HealthStatus, BloodTypeChoices
+from clinic.models import Student, HealthRecord, Consultation, HealthStatus, BloodTypeChoices
 
 
 class StudentModelTests(APITestCase):
@@ -47,8 +47,6 @@ class HealthRecordModelTests(APITestCase):
             medication="Salbutamol inhaler",
             weight=Decimal("52.50"),
             height=Decimal("160.00"),
-            visit=timezone.now(),
-            consultation="Routine checkup and asthma follow-up."
         )
 
     def test_health_record_creation_and_relationship(self):
@@ -154,8 +152,6 @@ class HealthRecordAPITests(APITestCase):
             medication="Antihistamine PRN",
             weight=Decimal("65.00"),
             height=Decimal("172.50"),
-            visit=timezone.now() - timedelta(days=5),
-            consultation="Allergic reaction to shrimp."
         )
 
     def test_get_all_health_records(self):
@@ -175,8 +171,6 @@ class HealthRecordAPITests(APITestCase):
             "medication": "Paracetamol 500mg",
             "weight": "64.80",
             "height": "172.50",
-            "visit": timezone.now().isoformat(),
-            "consultation": "Fever consultation, given paracetamol."
         }
         response = self.client.post('/api/health-records/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -222,7 +216,6 @@ class HealthRecordAPITests(APITestCase):
             "medication": "Cetirizine 10mg",
             "weight": "66.00",
             "height": "173.00",
-            "consultation": "Follow-up consultation after recovery."
         }
         response = self.client.put(f'/api/health-records/{self.record1.health_id}/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -245,6 +238,172 @@ class HealthRecordAPITests(APITestCase):
         self.assertFalse(HealthRecord.objects.filter(health_id=self.record1.health_id).exists())
 
 
+class ConsultationModelTests(APITestCase):
+    """Unit tests for the Consultation database model and relationships."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            student_id=2026000016
+        )
+        self.consultation = Consultation.objects.create(
+            student=self.student,
+            consultation="Routine checkup and asthma follow-up.",
+            visits=timezone.now()
+        )
+
+    def test_consultation_creation_and_relationship(self):
+        """Verify consultation creation and FK relationship with Student."""
+        self.assertEqual(self.consultation.student, self.student)
+        self.assertEqual(self.consultation.student_id, self.student.student_id)
+        self.assertEqual(self.consultation.consultation, "Routine checkup and asthma follow-up.")
+        self.assertIsNotNone(self.consultation.visits)
+        self.assertEqual(self.student.consultations.count(), 1)
+        self.assertEqual(self.student.consultations.first(), self.consultation)
+
+    def test_cascade_delete_student_deletes_consultations(self):
+        """Verify ON DELETE CASCADE removes associated consultations when student is deleted."""
+        consultation_id = self.consultation.consultation_id
+        self.student.delete()
+        self.assertFalse(Consultation.objects.filter(consultation_id=consultation_id).exists())
+
+
+class ConsultationAPITests(APITestCase):
+    """Integration tests for Consultation CRUD API endpoints."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            student_id=2026000017
+        )
+        self.consultation1 = Consultation.objects.create(
+            student=self.student,
+            consultation="Allergic reaction to shrimp.",
+            visits=timezone.now() - timedelta(days=2)
+        )
+
+    def test_get_all_consultations(self):
+        """GET /api/consultations/ returns list of consultations."""
+        response = self.client.get('/api/consultations/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['student_id'], self.student.student_id)
+
+    def test_create_consultation_success(self):
+        """POST /api/consultations/ creates a new consultation with integer student_id."""
+        payload = {
+            "student_id": self.student.student_id,
+            "consultation": "Fever consultation, given paracetamol.",
+            "visits": timezone.now().isoformat()
+        }
+        response = self.client.post('/api/consultations/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['student_id'], self.student.student_id)
+        self.assertEqual(response.data['consultation'], "Fever consultation, given paracetamol.")
+        self.assertEqual(Consultation.objects.count(), 2)
+
+    def test_create_consultation_invalid_student_fails(self):
+        """POST /api/consultations/ with invalid student_id returns 400 Bad Request."""
+        payload = {
+            "student_id": 999999,
+            "consultation": "Unwell"
+        }
+        response = self.client.post('/api/consultations/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('student_id', str(response.data))
+
+    def test_get_single_consultation(self):
+        """GET /api/consultations/<consultation_id>/ retrieves consultation."""
+        response = self.client.get(f'/api/consultations/{self.consultation1.consultation_id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['consultation_id'], self.consultation1.consultation_id)
+        self.assertEqual(response.data['student_id'], self.student.student_id)
+
+    def test_put_update_consultation(self):
+        """PUT /api/consultations/<consultation_id>/ fully updates consultation."""
+        payload = {
+            "student_id": self.student.student_id,
+            "consultation": "Follow-up consultation after recovery.",
+            "visits": timezone.now().isoformat()
+        }
+        response = self.client.put(f'/api/consultations/{self.consultation1.consultation_id}/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.consultation1.refresh_from_db()
+        self.assertEqual(self.consultation1.consultation, "Follow-up consultation after recovery.")
+
+    def test_patch_update_consultation(self):
+        """PATCH /api/consultations/<consultation_id>/ partially updates consultation."""
+        payload = {"consultation": "Improved notes"}
+        response = self.client.patch(f'/api/consultations/{self.consultation1.consultation_id}/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.consultation1.refresh_from_db()
+        self.assertEqual(self.consultation1.consultation, "Improved notes")
+
+    def test_delete_consultation(self):
+        """DELETE /api/consultations/<consultation_id>/ deletes consultation (204 No Content)."""
+        response = self.client.delete(f'/api/consultations/{self.consultation1.consultation_id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Consultation.objects.filter(consultation_id=self.consultation1.consultation_id).exists())
+
+
+class StudentConsultationRelationshipEndpointTests(APITestCase):
+    """Integration tests for /api/students/<student_id>/consultations/ relationship endpoints."""
+
+    def setUp(self):
+        self.student = Student.objects.create(
+            student_id=2026000018
+        )
+        self.other_student = Student.objects.create(
+            student_id=2026000019
+        )
+        # Create 2 consultations for the student
+        self.consultation1 = Consultation.objects.create(
+            student=self.student,
+            consultation="First visit for rhinitis.",
+            visits=timezone.now() - timedelta(days=2)
+        )
+        self.consultation2 = Consultation.objects.create(
+            student=self.student,
+            consultation="Second visit for follow up.",
+            visits=timezone.now()
+        )
+        # Create 1 consultation for the other student
+        self.consultation_other = Consultation.objects.create(
+            student=self.other_student,
+            consultation="Annual physical exam."
+        )
+
+    def test_get_student_consultations(self):
+        """GET /api/students/<student_id>/consultations/ returns only that student's consultations."""
+        response = self.client.get(f'/api/students/{self.student.student_id}/consultations/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        for item in response.data:
+            self.assertEqual(item['student_id'], self.student.student_id)
+
+    def test_get_consultations_for_nonexistent_student_returns_404(self):
+        """GET /api/students/<student_id>/consultations/ for non-existent student returns 404."""
+        response = self.client.get('/api/students/999999/consultations/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_post_student_consultation_via_relationship(self):
+        """POST /api/students/<student_id>/consultations/ creates consultation linked to student."""
+        payload = {
+            "consultation": "Created via nested relationship endpoint.",
+            "visits": timezone.now().isoformat()
+        }
+        response = self.client.post(f'/api/students/{self.student.student_id}/consultations/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['student_id'], self.student.student_id)
+        self.assertEqual(self.student.consultations.count(), 3)
+
+    def test_post_student_consultation_for_nonexistent_student_returns_404(self):
+        """POST /api/students/<student_id>/consultations/ for non-existent student returns 404."""
+        payload = {
+            "consultation": "Unwell"
+        }
+        response = self.client.post('/api/students/999999/consultations/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class StudentHealthRecordRelationshipEndpointTests(APITestCase):
     """Integration tests for /api/students/<student_id>/health-records/ relationship endpoints."""
 
@@ -260,21 +419,16 @@ class StudentHealthRecordRelationshipEndpointTests(APITestCase):
             student=self.student,
             allergies="Pollen",
             blood_type=BloodTypeChoices.B_POSITIVE,
-            visit=timezone.now() - timedelta(days=2),
-            consultation="First visit for rhinitis."
         )
         self.record2 = HealthRecord.objects.create(
             student=self.student,
             allergies="Pollen",
             blood_type=BloodTypeChoices.B_POSITIVE,
-            visit=timezone.now(),
-            consultation="Second visit for follow up."
         )
         # Create 1 record for Frank
         self.record_frank = HealthRecord.objects.create(
             student=self.other_student,
             blood_type=BloodTypeChoices.O_NEGATIVE,
-            consultation="Annual physical exam."
         )
 
     def test_get_student_health_records(self):
@@ -297,7 +451,6 @@ class StudentHealthRecordRelationshipEndpointTests(APITestCase):
             "blood_type": "B+",
             "weight": "55.00",
             "height": "165.00",
-            "consultation": "Created via nested relationship endpoint."
         }
         response = self.client.post(f'/api/students/{self.student.student_id}/health-records/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -330,20 +483,15 @@ class StudentPortalHealthRecordAPITests(APITestCase):
             student=self.student1,
             allergies="Pollen",
             blood_type=BloodTypeChoices.B_POSITIVE,
-            visit=timezone.now() - timedelta(days=2),
-            consultation="First visit for rhinitis."
         )
         self.record2 = HealthRecord.objects.create(
             student=self.student1,
             allergies="Pollen",
             blood_type=BloodTypeChoices.B_POSITIVE,
-            visit=timezone.now(),
-            consultation="Second visit for follow up."
         )
         self.record3 = HealthRecord.objects.create(
             student=self.student2,
             blood_type=BloodTypeChoices.O_NEGATIVE,
-            consultation="Annual physical exam."
         )
 
     def test_get_all_health_records(self):

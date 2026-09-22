@@ -52,8 +52,9 @@ class Student(models.Model):
 
 class HealthRecord(models.Model):
     """
-    HealthRecord model representing clinic consultations, visits, and medical information
-    for a specific student.
+    HealthRecord model representing medical and physical information
+    for a specific student. Clinic consultations and visit dates are
+    tracked separately in the Consultation model.
     """
     health_id = models.BigAutoField(
         primary_key=True,
@@ -104,15 +105,6 @@ class HealthRecord(models.Model):
         validators=[MinValueValidator(Decimal('0.0')), MaxValueValidator(Decimal('300.0'))],
         help_text="Height in centimeters (cm)"
     )
-    visit = models.DateTimeField(
-        default=timezone.now,
-        help_text="Date and time of clinic visit"
-    )
-    consultation = models.TextField(
-        blank=True,
-        default='',
-        help_text="Clinic consultation notes, diagnosis, and treatment provided"
-    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text="Timestamp when health record was created"
@@ -124,17 +116,64 @@ class HealthRecord(models.Model):
 
     class Meta:
         db_table = 'health_records'
-        ordering = ['-visit', '-health_id']
+        ordering = ['-health_id']
         verbose_name = 'Health Record'
         verbose_name_plural = 'Health Records'
         indexes = [
-            models.Index(fields=['student', '-visit'], name='idx_hr_student_visit'),
-            models.Index(fields=['-visit'], name='idx_hr_visit'),
+            models.Index(fields=['student', '-health_id'], name='idx_hr_student_id'),
         ]
 
     def __str__(self):
-        visit_str = self.visit.strftime('%Y-%m-%d %H:%M') if self.visit else 'N/A'
-        return f"Record #{self.health_id} - Student: {self.student_id} ({visit_str})"
+        return f"Record #{self.health_id} - Student: {self.student_id}"
+
+
+class Consultation(models.Model):
+    """
+    Consultation model representing clinic consultation notes and the
+    associated visit date/time for a specific student.
+    """
+    consultation_id = models.BigAutoField(
+        primary_key=True,
+        help_text="Unique consultation identifier"
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='consultations',
+        db_column='student_id',
+        help_text="The student associated with this consultation"
+    )
+    consultation = models.TextField(
+        blank=True,
+        default='',
+        help_text="Clinic consultation notes, diagnosis, and treatment provided"
+    )
+    visits = models.DateTimeField(
+        default=timezone.now,
+        help_text="Date and time of clinic visit"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when consultation was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Timestamp when consultation was last updated"
+    )
+
+    class Meta:
+        db_table = 'consultations'
+        ordering = ['-visits', '-consultation_id']
+        verbose_name = 'Consultation'
+        verbose_name_plural = 'Consultations'
+        indexes = [
+            models.Index(fields=['student', '-visits'], name='idx_c_student_visit'),
+            models.Index(fields=['-visits'], name='idx_c_visit'),
+        ]
+
+    def __str__(self):
+        visit_str = self.visits.strftime('%Y-%m-%d %H:%M') if self.visits else 'N/A'
+        return f"Consultation #{self.consultation_id} - Student: {self.student_id} ({visit_str})"
 
 
 class HealthStatus(models.Model):

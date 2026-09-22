@@ -1,17 +1,17 @@
 """
-Django REST Framework serializers for Student and HealthRecord models.
+Django REST Framework serializers for Student, HealthRecord, and Consultation models.
 Provides full input validation, relationship handling, and serialization.
 """
 
-from datetime import date
 from rest_framework import serializers
-from .models import Student, HealthRecord, HealthStatus, BloodTypeChoices
+from .models import Student, HealthRecord, Consultation, HealthStatus, BloodTypeChoices
 
 
 class HealthRecordSerializer(serializers.ModelSerializer):
     """
     Serializer for the HealthRecord model.
     Handles foreign-key relationship with Student via student_id.
+    Clinic consultations and visit dates live in the separate Consultation model.
     """
     # Accept and display student_id as the primary key of the related Student
     student_id = serializers.PrimaryKeyRelatedField(
@@ -31,8 +31,6 @@ class HealthRecordSerializer(serializers.ModelSerializer):
             'medication',
             'weight',
             'height',
-            'visit',
-            'consultation',
             'created_at',
             'updated_at',
         ]
@@ -60,6 +58,31 @@ class HealthRecordSerializer(serializers.ModelSerializer):
             valid_choices = ", ".join(BloodTypeChoices.values)
             raise serializers.ValidationError(f"Invalid blood type. Valid options are: {valid_choices}")
         return value
+
+
+class ConsultationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Consultation model.
+    Handles foreign-key relationship with Student via student_id.
+    """
+    # Accept and display student_id as the primary key of the related Student
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=Student.objects.all(),
+        source='student',
+        help_text="The ID of the student associated with this consultation"
+    )
+
+    class Meta:
+        model = Consultation
+        fields = [
+            'consultation_id',
+            'student_id',
+            'consultation',
+            'visits',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['consultation_id', 'created_at', 'updated_at']
 
 
 class HealthStatusSerializer(serializers.ModelSerializer):
@@ -96,23 +119,29 @@ class StudentSerializer(serializers.ModelSerializer):
         source='health_records.count',
         read_only=True
     )
+    consultations_count = serializers.IntegerField(
+        source='consultations.count',
+        read_only=True
+    )
 
     class Meta:
         model = Student
         fields = [
             'student_id',
             'health_records_count',
+            'consultations_count',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['health_records_count', 'created_at', 'updated_at']
+        read_only_fields = ['health_records_count', 'consultations_count', 'created_at', 'updated_at']
 
 
 class StudentDetailSerializer(StudentSerializer):
     """
-    Detailed Student Serializer including nested health records history.
+    Detailed Student Serializer including nested health records and consultation history.
     """
     health_records = HealthRecordSerializer(many=True, read_only=True)
+    consultations = ConsultationSerializer(many=True, read_only=True)
 
     class Meta(StudentSerializer.Meta):
-        fields = StudentSerializer.Meta.fields + ['health_records']
+        fields = StudentSerializer.Meta.fields + ['health_records', 'consultations']

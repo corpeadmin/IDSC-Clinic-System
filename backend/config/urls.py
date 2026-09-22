@@ -17,6 +17,8 @@ def api_root_view(request):
             'students': '/api/students/',
             'health_records': '/api/health-records/',
             'student_health_records': '/api/students/<student_id>/health-records/',
+            'consultations': '/api/consultations/',
+            'student_consultations': '/api/students/<student_id>/consultations/',
             'student_portal_health_records': '/api/student-portal/health-records/',
             'student_portal_student_health_records': '/api/student-portal/health-records/<student_id>/',
             'health_statuses': '/api/health-statuses/',
