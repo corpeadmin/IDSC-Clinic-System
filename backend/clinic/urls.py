@@ -14,6 +14,8 @@ from .views import (
     MedicineStockView,
     MedicineDispensationViewSet,
     RegistrarStudentView,
+    DashboardSummaryView,
+    DispensationReportView,
 )
 
 
@@ -76,5 +78,19 @@ urlpatterns = [
         "registrar/students/<int:student_id>/",
         RegistrarStudentView.as_view(),
         name="registrar-student",
+    ),
+
+    # Dashboard summary endpoint
+    path(
+        "dashboard/summary/",
+        DashboardSummaryView.as_view(),
+        name="dashboard-summary",
+    ),
+
+    # Dispensation report endpoint
+    path(
+        "reports/dispensations/",
+        DispensationReportView.as_view(),
+        name="dispensation-report",
     ),
 ]

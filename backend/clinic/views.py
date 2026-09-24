@@ -4,15 +4,18 @@ Implements complete CRUD endpoints for Students and Health Records,
 including relationship endpoints and search/filtering capabilities.
 """
 
+from django.utils import timezone
+from datetime import timedelta
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import F, Q, Sum, Count
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
+
+
 
 from .services.inventory import (
     InventoryConnectionError,
@@ -764,3 +767,159 @@ class MedicineStockView(APIView):
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+
+class DashboardSummaryView(APIView):
+    """
+    Provides aggregated clinic statistics for the dashboard.
+    """
+
+    def get(self, request):
+        total_health_records = HealthRecord.objects.count()
+
+        total_medicines = Medicine.objects.count()
+
+        active_medicines = Medicine.objects.filter(
+            is_active=True
+        ).count()
+
+        total_dispensations = MedicineDispensation.objects.count()
+
+        low_stock = Medicine.objects.filter(
+            quantity_in_stock__lte=F("reorder_level"),
+            quantity_in_stock__gt=0,
+            is_active=True,
+        ).count()
+
+        out_of_stock = Medicine.objects.filter(
+            quantity_in_stock=0,
+            is_active=True,
+        ).count()
+
+        recent_dispensations = (
+            MedicineDispensation.objects
+            .order_by("-dispensed_at")[:5]
+        )
+
+        recent_health_records = (
+            HealthRecord.objects
+            .order_by("-visit")[:5]
+        )
+
+        return Response(
+            {
+                "summary": {
+                    "total_health_records": total_health_records,
+                    "total_medicines": total_medicines,
+                    "active_medicines": active_medicines,
+                    "total_dispensations": total_dispensations,
+                },
+                "inventory": {
+                    "low_stock": low_stock,
+                    "out_of_stock": out_of_stock,
+                },
+                "recent_activity": {
+                    "dispensations": (
+                        MedicineDispensationSerializer(
+                            recent_dispensations,
+                            many=True,
+                        ).data
+                    ),
+                    "health_records": (
+                        HealthRecordSerializer(
+                            recent_health_records,
+                            many=True,
+                        ).data
+                    ),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class DispensationReportView(APIView):
+    """
+    Provides aggregated medicine dispensation statistics.
+    """
+
+    def get(self, request):
+        days_param = request.query_params.get("days")
+
+        if days_param is None:
+            days = None
+        else:
+            try:
+                days = int(days_param)
+            except ValueError:
+                return Response(
+                    {
+                        "detail": "days must be a positive integer."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if days < 1:
+                return Response(
+                    {
+                        "detail": "days must be a positive integer."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        queryset = MedicineDispensation.objects.all()
+
+        period = None
+
+        if days is not None:
+            end_date = timezone.now()
+            start_date = end_date - timedelta(days=days)
+
+            queryset = queryset.filter(
+                dispensed_at__gte=start_date,
+                dispensed_at__lte=end_date,
+            )
+
+            period = {
+                "days": days,
+                "from": start_date,
+                "to": end_date,
+            }
+
+        total_dispensations = queryset.count()
+
+        total_quantity = (
+            queryset.aggregate(
+                total=Sum("quantity")
+            )["total"]
+            or 0
+        )
+
+        medicine_summary = (
+            queryset
+            .values("medicine_id")
+            .annotate(
+                quantity_dispensed=Sum("quantity"),
+                dispensation_count=Count("dispensation_id"),
+            )
+            .order_by("-quantity_dispensed")
+        )
+
+        response_data = {
+            "report": "medicine_dispensations",
+            "summary": {
+                "total_dispensations": total_dispensations,
+                "total_quantity_dispensed": total_quantity,
+            },
+            "medicines": list(medicine_summary),
+        }
+
+        if period is not None:
+            response_data["period"] = {
+                "days": period["days"],
+                "from": period["from"].isoformat(),
+                "to": period["to"].isoformat(),
+            }
+
+        return Response(
+            response_data,
+            status=status.HTTP_200_OK,
+        )
