@@ -11,25 +11,39 @@ from rest_framework import serializers, viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
 
+from .services.inventory import (
+    InventoryConnectionError,
+    InventoryService,
+    InventoryServiceError,
+)
+from .services.registrar import (
+    RegistrarConnectionError,
+    RegistrarNotFoundError,
+    RegistrarService,
+    RegistrarServiceError,
+)
 from .models import (
     Student,
     HealthRecord,
     Medicine,
     DispensingRecord,
     StockTransaction,
+    MedicineDispensation,
 )
 from .serializers import (
-    StudentSerializer,
-    StudentDetailSerializer,
     HealthRecordSerializer,
+    StudentSerializer,
     MedicineSerializer,
     DispensingRecordSerializer,
     StockTransactionSerializer,
     StockInSerializer,
     StockAdjustmentSerializer,
+    MedicineStockSerializer,
+    MedicineDispensationSerializer,
 )
-
 
 class StudentViewSet(viewsets.ModelViewSet):
     """
@@ -174,6 +188,79 @@ class HealthRecordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(filters)
 
         return queryset
+
+
+class RegistrarStudentView(APIView):
+    """
+    Retrieve student information from the external Registrar System.
+
+    The Registrar System is the source of truth for student information.
+    The Clinic does not query its local Student model for this endpoint.
+    """
+
+    def get(self, request, student_id):
+        try:
+            student_id = int(student_id)
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    'detail': 'Student ID must be a valid integer.'
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if student_id < 1:
+            return Response(
+                {
+                    'detail': 'Student ID must be greater than 0.'
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        registrar_service = RegistrarService()
+
+        try:
+            student = registrar_service.get_student(student_id)
+
+        except RegistrarNotFoundError as exc:
+            return Response(
+                {
+                    'detail': str(exc)
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        except RegistrarConnectionError:
+            return Response(
+                {
+                    'detail': (
+                        'Registrar System is currently unavailable.'
+                    )
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        except RegistrarServiceError as exc:
+            return Response(
+                {
+                    'detail': str(exc)
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(
+            {
+                'student_id': student['id'],
+                'student_number': student['studentNumber'],
+                'first_name': student['firstName'],
+                'last_name': student['lastName'],
+                'email': student['email'],
+                'program': student['program'],
+                'year_level': student['yearLevel'],
+                'status': student['status'],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class MedicineViewSet(viewsets.ModelViewSet):
@@ -488,6 +575,90 @@ class DispensingRecordViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class MedicineDispensationViewSet(viewsets.ModelViewSet):
+    """
+    Inventory-integrated medicine dispensing endpoint.
+
+    The Inventory System is the source of truth for medicine stock.
+
+    Flow:
+    1. Validate the Clinic request.
+    2. Ask Inventory to deduct the requested quantity.
+    3. Only if Inventory succeeds, create the Clinic
+       MedicineDispensation record.
+    4. If Inventory fails, no Clinic dispensation record is created.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    queryset = MedicineDispensation.objects.all()
+
+    serializer_class = MedicineDispensationSerializer
+
+    lookup_field = 'dispensation_id'
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        validated_data = serializer.validated_data
+
+        medicine_id = validated_data['medicine_id']
+        quantity = validated_data['quantity']
+        reason = validated_data.get('reason')
+
+        inventory_service = InventoryService()
+
+        try:
+            inventory_result = inventory_service.dispense_stock(
+                medicine_id=medicine_id,
+                quantity=quantity,
+                remarks=reason or 'Clinic medicine dispensing',
+            )
+
+        except InventoryConnectionError:
+            return Response(
+                {
+                    'detail': (
+                        'Inventory System is currently unavailable.'
+                    )
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        except InventoryServiceError as exc:
+            return Response(
+                {
+                    'detail': str(exc)
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if not inventory_result.success:
+            return Response(
+                {
+                    'detail': (
+                        inventory_result.message
+                        or 'Unable to deduct medicine stock.'
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Inventory successfully deducted stock.
+        # Only now create the Clinic dispensation record.
+        dispensation = serializer.save()
+
+        response_serializer = self.get_serializer(
+            dispensation
+        )
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class StockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Read-only ViewSet for viewing medicine stock history.
@@ -525,3 +696,71 @@ class StockTransactionViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         return queryset
+
+class MedicineStockView(APIView):
+    """
+    Clinic-facing medicine stock endpoint.
+
+    Stock data is owned by the external Inventory System.
+    The Clinic only retrieves and exposes the data to the frontend.
+    """
+
+    def get(self, request):
+        inventory_service = InventoryService()
+
+        try:
+            inventory_stock = inventory_service.get_stock()
+
+            medicine_stock = []
+
+            for medicine in inventory_stock:
+                medicine_id = medicine.get("product_id")
+                medicine_name = medicine.get("product_name")
+                stock = medicine.get("stock")
+
+                if (
+                    medicine_id is None
+                    or medicine_name is None
+                    or stock is None
+                ):
+                    continue
+
+                medicine_stock.append(
+                    {
+                        "medicine_id": medicine_id,
+                        "medicine_name": medicine_name,
+                        "stock": stock,
+                        "available": stock > 0,
+                    }
+                )
+
+            serializer = MedicineStockSerializer(
+                medicine_stock,
+                many=True,
+            )
+
+            return Response(
+                {
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except InventoryConnectionError:
+            return Response(
+                {
+                    "detail": "Inventory System is currently unavailable."
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        except InventoryServiceError:
+            return Response(
+                {
+                    "detail": (
+                        "Unable to retrieve medicine stock "
+                        "from Inventory System."
+                    )
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )

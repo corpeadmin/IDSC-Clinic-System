@@ -11,6 +11,7 @@ from .models import (
     Medicine,
     DispensingRecord,
     StockTransaction,
+    MedicineDispensation,
     SexChoices,
     BloodTypeChoices,
 )
@@ -361,3 +362,74 @@ class StockAdjustmentSerializer(serializers.Serializer):
         allow_blank=True,
         max_length=500,
     )
+
+class MedicineStockSerializer(serializers.Serializer):
+    medicine_id = serializers.IntegerField(min_value=1)
+    medicine_name = serializers.CharField()
+    stock = serializers.IntegerField(min_value=0)
+    available = serializers.BooleanField()
+
+class MedicineDispensationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Inventory-integrated medicine dispensations.
+
+    The medicine_id refers to the external Inventory System.
+    The student_id refers to the external Registrar System.
+
+    student_name and medicine_name are populated by the integration
+    endpoint and are not stored as Clinic-owned master data.
+    """
+
+    student_name = serializers.CharField(
+        read_only=True
+    )
+
+    medicine_name = serializers.CharField(
+        read_only=True
+    )
+
+    class Meta:
+        model = MedicineDispensation
+        fields = [
+            'dispensation_id',
+            'healthrecord_id',
+            'student_id',
+            'student_name',
+            'medicine_id',
+            'medicine_name',
+            'quantity',
+            'dispensed_at',
+            'reason',
+            'created_at',
+        ]
+
+        read_only_fields = [
+            'dispensation_id',
+            'student_name',
+            'medicine_name',
+            'created_at',
+        ]
+
+    def validate_student_id(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'Student ID must be greater than 0.'
+            )
+
+        return value
+
+    def validate_medicine_id(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'Medicine ID must be greater than 0.'
+            )
+
+        return value
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                'Quantity must be greater than 0.'
+            )
+
+        return value
