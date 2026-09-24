@@ -923,3 +923,67 @@ class DispensationReportView(APIView):
             response_data,
             status=status.HTTP_200_OK,
         )
+
+
+class MedicineInventoryReportView(APIView):
+    """
+    Provides a medicine inventory report for the Clinic dashboard.
+
+    Stock information is based on the Clinic's current Medicine records.
+    """
+
+    def get(self, request):
+        medicines = Medicine.objects.all().order_by("name")
+
+        total_medicines = medicines.count()
+
+        active_medicines = medicines.filter(
+            is_active=True
+        ).count()
+
+        low_stock = medicines.filter(
+            quantity_in_stock__lte=F("reorder_level"),
+            quantity_in_stock__gt=0,
+            is_active=True,
+        ).count()
+
+        out_of_stock = medicines.filter(
+            quantity_in_stock=0,
+            is_active=True,
+        ).count()
+
+        medicine_data = []
+
+        for medicine in medicines:
+            if medicine.quantity_in_stock == 0:
+                stock_status = "OUT_OF_STOCK"
+            elif medicine.quantity_in_stock <= medicine.reorder_level:
+                stock_status = "LOW_STOCK"
+            else:
+                stock_status = "IN_STOCK"
+
+            medicine_data.append(
+                {
+                    "medicine_id": medicine.medicine_id,
+                    "name": medicine.name,
+                    "quantity_in_stock": medicine.quantity_in_stock,
+                    "reorder_level": medicine.reorder_level,
+                    "status": stock_status,
+                    "is_active": medicine.is_active,
+                    "expiration_date": medicine.expiration_date,
+                }
+            )
+
+        return Response(
+            {
+                "report": "medicine_inventory",
+                "summary": {
+                    "total_medicines": total_medicines,
+                    "active_medicines": active_medicines,
+                    "low_stock": low_stock,
+                    "out_of_stock": out_of_stock,
+                },
+                "medicines": medicine_data,
+            },
+            status=status.HTTP_200_OK,
+        )
