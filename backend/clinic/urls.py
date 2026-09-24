@@ -13,15 +13,6 @@ from .views import (
     StockTransactionViewSet,
     MedicineStockView,
     MedicineDispensationViewSet,
-)
-from .views import (
-    StudentViewSet,
-    HealthRecordViewSet,
-    MedicineViewSet,
-    DispensingRecordViewSet,
-    StockTransactionViewSet,
-    MedicineStockView,
-    MedicineDispensationViewSet,
     RegistrarStudentView,
 )
 
