@@ -350,6 +350,18 @@ Inside `psql`, useful commands include:
 \d health_records
 ```
 
+### Inspect consultations
+
+```sql
+\d consultations
+```
+
+### Inspect health statuses
+
+```sql
+\d health_statuses
+```
+
 ### Query students
 
 ```sql
@@ -360,6 +372,18 @@ SELECT * FROM students;
 
 ```sql
 SELECT * FROM health_records;
+```
+
+### Query consultations
+
+```sql
+SELECT * FROM consultations;
+```
+
+### Query health statuses
+
+```sql
+SELECT * FROM health_statuses;
 ```
 
 ### Exit PostgreSQL
@@ -567,11 +591,19 @@ Use this checklist to confirm that the development environment is working:
 * [ ] Django migrations complete successfully.
 * [ ] `students` table exists.
 * [ ] `health_records` table exists.
-* [ ] Backend tests pass.
+* [ ] `consultations` table exists.
+* [ ] `health_statuses` table exists.
+* [ ] Backend tests pass (**54 tests expected**).
 * [ ] Django backend runs on port `8000`.
-* [ ] API root responds.
+* [ ] API root responds at `http://127.0.0.1:8000/`.
+* [ ] OpenAPI schema is served at `http://127.0.0.1:8000/api/schema/`.
+* [ ] Django admin loads at `http://127.0.0.1:8000/admin/`.
 * [ ] Frontend dependencies are installed.
 * [ ] Vite frontend runs on port `5173`.
+
+> **Note:** the frontend at `frontend/` is the unmodified Vite starter template. It serves a demo
+> landing page and makes no API calls. The Django admin at `/admin/` is the only working user
+> interface in the project.
 
 ---
 

@@ -1,16 +1,49 @@
-# React + Vite
+# IDSC Clinic System — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite project for the IDSC Clinic System.
 
-Currently, two official plugins are available:
+> **Status: the clinic UI is not implemented.** This directory contains the unmodified Vite + React
+> starter template. `src/App.jsx` renders the Vite demo landing page — a counter, template logos, and
+> links to the Vite and React sites. There is no clinic screen, no routing, no state management, and
+> no API client.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Current contents
 
-## React Compiler
+| File | Purpose |
+| :--- | :--- |
+| `index.html` | HTML entry template |
+| `package.json` | Dependencies and npm scripts |
+| `vite.config.js` | Vite config — React plugin only |
+| `eslint.config.js` | ESLint configuration |
+| `src/main.jsx` | React root mount point |
+| `src/App.jsx` | Vite starter landing page |
+| `src/App.css` | Template stylesheet |
+| `src/index.css` | Template stylesheet and CSS custom properties |
+| `src/assets/` | `hero.png`, `react.svg`, `vite.svg` — template images |
+| `public/` | `favicon.svg`, `icons.svg` — template assets |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the ESLint configuration
+```bash
+npm install     # install dependencies
+npm run dev     # start the dev server on http://localhost:5173
+npm run build   # production build to dist/
+npm run lint    # run ESLint
+npm run preview # preview the production build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Backend connection
+
+There is currently **no configured connection to the backend**.
+
+`vite.config.js` contains only the React plugin — no `server.proxy` and no API base URL. No `fetch`
+or `axios` call exists anywhere in `src/`.
+
+The Django backend runs on `http://127.0.0.1:8000` and serves CORS headers for
+`http://localhost:5173` and `http://127.0.0.1:5173`, so those origins may call it directly.
+
+## Reference
+
+- API contract: [../API.md](../API.md), [../openapi.json](../openapi.json)
+- Endpoint inventory and screen status: [../docs/architecture.md](../docs/architecture.md)
+- UI and design-system status: [../docs/design-system.md](../docs/design-system.md)
