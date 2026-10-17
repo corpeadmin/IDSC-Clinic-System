@@ -631,3 +631,8 @@ The project integration baseline requires:
 - require teammate approval before the final merge.
 
 These rules are part of the release process, not optional workflow suggestions.
+
+
+## Frontend integration branch
+
+The clinic frontend now connects to the verified Django API. Start Django at `127.0.0.1:8000`, run `npm ci` and `npm run dev` in `frontend`, and open `http://127.0.0.1:5173`. Create an actual Django user with `python manage.py createsuperuser`; the legacy simulated login is removed. The local Vite proxy handles `/api` while preserving session and CSRF cookies. See `frontend/README.md` for browser validation and production proxy requirements. Business data remains mock/in-memory and resets on backend restart.

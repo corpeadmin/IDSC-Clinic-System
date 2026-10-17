@@ -4,7 +4,7 @@ The **IDSC Clinic System** is the Clinic module of the class College Management 
 
 The backend manages Clinic-owned medical data and coordinates API-level integrations with Registrar, Inventory, Faculty, and Student Portal while preserving each module's domain ownership.
 
-This README describes the verified integration state on `fix/pre-main-integration`.
+This README describes the verified backend baseline and the frontend integration on `integration/clinic-final`. See `docs/CONSOLIDATION-AUDIT.md` for branch selection and `docs/INTEGRATION-VALIDATION.md` for current validation.
 
 ---
 
@@ -226,7 +226,7 @@ See `docs/integration.md` for full sequence and error behavior.
 - JavaScript / JSX
 - CSS
 
-The currently committed frontend is still a React/Vite starter implementation and is **not evidence of the completed Clinic high-fidelity UI**.
+The frontend uses the clinic layout selectively recovered from the legacy UI branch and connects to the verified session-authenticated API. It supports student/medicine projections, health records, consultations, health statuses, dispensing/rollback, reports and administrator staff management. Business data remains in the verified mock backend; page reloads retain server state, backend restarts reset it.
 
 See `docs/design-system.md` for the verified repository design baseline and Figma synchronization rules.
 
