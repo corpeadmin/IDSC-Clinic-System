@@ -392,6 +392,10 @@ class MockClinicRepository:
     def list_dispensations(self):
         return self._copy(list(self._dispensations.values()))
 
+    def delete_dispensation(self, dispensation_id):
+        record = self._dispensations.pop(int(dispensation_id), None)
+        return self._copy(record) if record is not None else None
+
     def get_dispensation(self, dispensation_id):
         record = self._dispensations.get(int(dispensation_id))
         return self._copy(record) if record is not None else None

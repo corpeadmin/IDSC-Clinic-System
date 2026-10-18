@@ -20,15 +20,15 @@ This README describes the verified backend baseline and the frontend integration
 | Canonical Swagger UI | `/docs` |
 | ReDoc | `/api/schema/redoc/` |
 | OpenAPI version | `3.1.0` |
-| Documented API paths | `29` |
-| Documented API operations | `45` |
+| Documented API paths | `35` |
+| Documented API operations | `53` |
 | Public operations | `3` |
-| Protected operations | `42` |
-| Permanent Django tests | `167` |
-| Permanent Django tests passed | `167` |
+| Protected operations | `50` |
+| Permanent Django tests | `257` |
+| Permanent Django tests passed | `257` |
 | Permanent Django tests failed | `0` |
-| Postman requests | `45` |
-| Newman requests executed | `45` |
+| Original Postman requests | `45` |
+| Original Newman requests executed | `45` |
 | Newman assertions | `46` |
 | Newman failures | `0` |
 
@@ -319,6 +319,8 @@ Authentication routes include:
 | `POST` | `/api/auth/login/` | Public |
 | `POST` | `/api/auth/logout/` | Authenticated |
 | `GET` | `/api/auth/me/` | Authenticated |
+| `POST` | `/api/auth/password/change/` | Authenticated |
+| `POST` | `/api/auth/username/change/` | Authenticated |
 
 The default authentication class is:
 
@@ -396,7 +398,7 @@ The health operation is public.
 
 The authoritative schemas, request bodies, response bodies, examples, and security metadata are defined in `openapi.yaml`.
 
-The current contract contains **45 operations**.
+The current contract contains **70 operations**.
 
 ### Authentication
 
@@ -406,6 +408,8 @@ The current contract contains **45 operations**.
 | `POST` | `/api/auth/login/` | Public | Log in |
 | `POST` | `/api/auth/logout/` | Authenticated | Log out |
 | `GET` | `/api/auth/me/` | Authenticated | Get current user |
+| `POST` | `/api/auth/password/change/` | Authenticated | Change own password |
+| `POST` | `/api/auth/username/change/` | Authenticated | Change own username |
 
 ### Health and dashboard
 
@@ -550,10 +554,10 @@ The generated contract uses the canonical local server:
 
 The current verified operation inventory is:
 
-- 29 paths;
-- 45 operations;
+- 43 paths;
+- 70 operations;
 - 3 public operations;
-- 42 protected operations.
+- 67 protected operations.
 
 The three explicitly public operations are:
 
@@ -577,11 +581,11 @@ Current baseline:
 
 | Test area | Result |
 |---|---:|
-| Django tests discovered | 167 |
-| Django tests passed | 167 |
+| Django tests discovered | 257 |
+| Django tests passed | 257 |
 | Django tests failed | 0 |
-| Postman requests | 45 |
-| Newman requests executed | 45 |
+| Original Postman requests | 45 |
+| Original Newman requests executed | 45 |
 | Newman assertions | 46 |
 | Newman failures | 0 |
 
@@ -807,3 +811,41 @@ Primary architecture documentation:
 - `docs/decisions/`
 
 When implementation, API contract, test evidence, or approved frontend design changes materially, synchronize the relevant documentation in the same reviewed workflow.
+
+
+## Self-service password change
+
+`POST /api/auth/password/change/` accepts `current_password`, `new_password`, and `confirm_password`. It requires the current session and a fresh `X-CSRFToken`, verifies the current password, requires a different matching new password, and applies configured Django password validators. Password strings are not trimmed and are limited to 1024 characters. Success returns only `{ "message": "Your password has been changed." }`. The current session is rotated and retained; other sessions expire on their next request. Validation errors use HTTP 400 Problem Details with field errors.
+
+Open Settings > Change password to use the flow. See `docs/PASSWORD-CHANGE.md` for details. All 45 pre-existing operations are preserved; the current schema has 43 paths and 70 operations. The original Postman collection remains a 45-request regression suite; the isolated password-change collection adds its own flow.
+
+
+## Username and administrator management
+
+`POST /api/auth/username/change/` changes only the signed-in user's username after current-password verification. It accepts `new_username` and `current_password`; names are validated, trimmed, Unicode-normalized and checked for duplicates. The current session remains signed in and the response contains updated account information.
+
+`GET /api/v1/admins/` lists administrators and `POST /api/v1/admins/` creates an additional Clinic administrator. Both require existing Clinic administrator permission. Creation accepts `username`, `password`, `confirm_password`, the acting administrator's `current_password`, and optional `first_name`, `last_name`, `email`. Strong password validation applies. The new account receives `CLINIC_ADMIN`, never Django superuser privileges. Staff cannot create or list administrators. All writes require CSRF.
+
+Use Settings > Change username or Administration > Add administrator. See `docs/ACCOUNT-MANAGEMENT.md`. The schema contains 43 paths and 70 operations (3 public, 67 protected); every original API definition remains unchanged.
+
+
+## Account deactivation and deletion
+
+Administration now provides Deactivate/Activate and Delete for both administrator and staff accounts. New operations: `DELETE /api/v1/admins/{user_id}/`, `POST /api/v1/admins/{user_id}/deactivate/`, `POST /api/v1/admins/{user_id}/activate/`, and `DELETE /api/v1/users/{user_id}/`. Permanent deletion requires JSON `{ "current_password": "your current password" }` and CSRF. Successful deletion returns HTTP 204 with no body.
+
+Only an active Clinic administrator can perform account lifecycle changes. Self-removal and last-active-admin removal are blocked. System administrators can be managed only by another system administrator, and admin accounts cannot be managed through staff lifecycle routes. Deactivation revokes existing database sessions; reactivation requires a fresh login. Deletion preserves clinic medical records. Admin directory rows include `is_system_admin`, `can_manage`, and `management_restriction` for UI hints; backend checks remain authoritative. See `docs/ACCOUNT-LIFECYCLE.md`.
+
+
+## Owner, Admin and Staff
+
+Owner manages Admins and Staff; Admin manages Staff only; Staff uses clinic features without account management. Owner accounts are protected from deletion/deactivation. Existing Django superusers are Owners; clinic groups retain their current Admin/Staff roles. Session responses expose the role. Admin account detail now supports GET/PUT/PATCH as well as DELETE, and account edits support validated usernames. See [ROLE-HIERARCHY.md](docs/ROLE-HIERARCHY.md) for the permission matrix and API details. This policy supersedes earlier descriptions allowing Admins to manage Admins.
+
+
+## Staff pages and Admin capacity
+
+Staff management now shows ten accounts per page with working Previous/Next controls and search-aware page counts. `GET /api/v1/users/` returns the Clinic pagination envelope, default/max `page_size=10`. Admin creation has a server-enforced five-account maximum, including inactive Admins and excluding Owners; capacity returns 409 until an Admin is deleted. See [ACCOUNT-LIMITS.md](docs/ACCOUNT-LIMITS.md) for details and validation fixtures.
+
+
+## Registrar and Inventory demo workflows
+
+Consecutive visible record labels, Owner/Admin-only clinical/history deletion, Get student by Registrar ID, automatic profile/status updates, Owner-operated Mock Registrar/Inventory workspaces, medicine notifications and selected/all restock requests with Inventory fulfillment are now connected to backend APIs. Internal record IDs stay stable; deleting dispensing history never reverses stock. These mock data reset on backend restart. See [EXTERNAL-WORKFLOWS.md](docs/EXTERNAL-WORKFLOWS.md) for roles, routes, examples and demonstration limits. Current inventory: 43 paths / 70 operations.

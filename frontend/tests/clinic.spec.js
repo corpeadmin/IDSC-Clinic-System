@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 test("session login, health CRUD, dispensing rollback, reports and logout", async ({
   page,
 }) => {
+  const runId = Date.now();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
@@ -70,7 +71,7 @@ test("session login, health CRUD, dispensing rollback, reports and logout", asyn
       tab: "Consultations",
       create: "New consultation",
       label: /^Chief complaint/,
-      marker: "Visit validation",
+      marker: "Visit validation " + runId,
       edit: "Edit consultation",
       del: "Delete consultation",
     },
@@ -78,7 +79,7 @@ test("session login, health CRUD, dispensing rollback, reports and logout", asyn
       tab: "Health status",
       create: "Record status",
       label: /^Remarks/,
-      marker: "Status validation",
+      marker: "Status validation " + runId,
       edit: "Edit health status",
       del: "Delete health status",
     },
@@ -102,20 +103,25 @@ test("session login, health CRUD, dispensing rollback, reports and logout", asyn
     await expect(page.getByRole("dialog")).toBeHidden();
     await article.getByRole("button", { name: flow.del }).click();
     await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeHidden({ timeout: 30000 });
     await expect(article).toHaveCount(0);
   }
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Medicine stock", exact: true })
     .click();
-  await page.getByLabel(/^Quantity/).fill("2");
+  await page.locator("form").filter({has: page.getByRole("button", {name: "Dispense", exact: true})}).getByLabel(/^Quantity/).fill("2");
   await page.getByLabel(/^Reason/).fill("Integration validation");
   await page.getByRole("button", { name: "Dispense", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Dispense", exact: true }),
+  ).toBeEnabled({ timeout: 30000 });
   await page
     .getByRole("button", { name: "Roll back", exact: true })
     .first()
     .click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeHidden({ timeout: 30000 });
   await expect(page.getByText(/ROLLED_BACK/).first()).toBeVisible();
   await page
     .getByRole("navigation")
@@ -160,6 +166,9 @@ test("administrator staff management and staff permissions", async ({
     .getByRole("button", { name: "Create", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toBeHidden();
+  await page
+    .getByPlaceholder("Search staff name, username, or email...")
+    .fill(username);
   const row = page.getByRole("row").filter({ hasText: username });
   await row.getByRole("button", { name: "Deactivate", exact: true }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();

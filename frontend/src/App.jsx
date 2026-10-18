@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { GetStudent, RestockPanel, MockWorkspace } from "./ExternalSystems";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { request, listAll } from "./api";
 import idscLogo from "./assets/idsc-logo.png";
 const paths = {
@@ -269,6 +270,7 @@ function Field({
   multiline = false,
   min,
   max,
+  autoComplete,
 }) {
   return (
     <label className="field">
@@ -295,6 +297,7 @@ function Field({
         <input
           name={name}
           type={type}
+          autoComplete={autoComplete}
           defaultValue={value ?? ""}
           required={required}
           min={min}
@@ -330,7 +333,277 @@ const activityLabels = {
   MEDICINE_DISPENSATION: "Medicine dispensed",
   MEDICINE_DISPENSATION_ROLLBACK: "Dispensation rolled back",
 };
+function PasswordChangeDialog({ onClose, onSuccess, onExpired }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
+  async function submit(event) {
+    event.preventDefault();
+    if (pending) return;
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    setError("");
+    setErrors({});
+    if (data.new_password !== data.confirm_password) {
+      setErrors({ confirm_password: ["The new passwords do not match."] });
+      return;
+    }
+    setPending(true);
+    try {
+      await request("/api/auth/password/change/", "POST", data);
+      form.reset();
+      onSuccess();
+    } catch (e) {
+      if (e.status === 401) {
+        form.reset();
+        onExpired();
+      } else {
+        setError(e.message);
+        setErrors(e.body?.errors || {});
+      }
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <Modal
+      title="Change password"
+      onClose={() => {
+        if (!pending) onClose();
+      }}
+    >
+      <form onSubmit={submit} aria-busy={pending}>
+        <div className="modal-content">
+          <p className="password-help" id="password-help">
+            Use at least 8 characters. Avoid common passwords, numbers alone,
+            and passwords similar to your account details. Your new password
+            must differ from your current one.
+          </p>
+          {error && (
+            <div className="notice" role="alert">
+              {error}
+            </div>
+          )}
+          <fieldset className="password-fields" disabled={pending}>
+            {[
+              ["current_password", "Current password", "current-password"],
+              ["new_password", "New password", "new-password"],
+              ["confirm_password", "Confirm new password", "new-password"],
+            ].map(([name, label, autocomplete]) => (
+              <div className="field" key={name}>
+                <label htmlFor={`password-${name}`}>{label}</label>
+                <input
+                  id={`password-${name}`}
+                  name={name}
+                  type="password"
+                  autoComplete={autocomplete}
+                  required
+                  maxLength={1024}
+                  minLength={name === "current_password" ? undefined : 8}
+                  aria-invalid={Boolean(errors[name])}
+                  aria-describedby={
+                    errors[name] ? `${name}-error` : "password-help"
+                  }
+                />
+                {errors[name] && (
+                  <span
+                    className="password-error"
+                    id={`${name}-error`}
+                    role="alert"
+                  >
+                    {[].concat(errors[name]).join(" ")}
+                  </span>
+                )}
+              </div>
+            ))}
+          </fieldset>
+          <p className="password-help">
+            You’ll stay signed in here. Your other sessions will be signed out.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={onClose} disabled={pending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Updating…" : "Update password"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function UsernameChangeDialog({ onClose, onSuccess, onExpired, username }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({});
+  async function submit(event) {
+    event.preventDefault();
+    if (pending) return;
+    const form = event.currentTarget;
+    setPending(true);
+    setError("");
+    setErrors({});
+    try {
+      const user = await request(
+        "/api/auth/username/change/",
+        "POST",
+        Object.fromEntries(new FormData(form)),
+      );
+      form.reset();
+      onSuccess(user);
+    } catch (e) {
+      if (e.status === 401) {
+        form.reset();
+        onExpired();
+      } else {
+        setError(e.message);
+        setErrors(e.body?.errors || {});
+      }
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <Modal
+      title="Change username"
+      onClose={() => {
+        if (!pending) onClose();
+      }}
+    >
+      <form onSubmit={submit} aria-busy={pending}>
+        <div className="modal-content">
+          <p className="password-help">
+            Your current username is <strong>{username}</strong>. You’ll stay
+            signed in here and use the new username the next time you sign in.
+          </p>
+          {error && (
+            <div className="notice" role="alert">
+              {error}
+            </div>
+          )}
+          <fieldset className="password-fields" disabled={pending}>
+            <div className="field">
+              <label htmlFor="account-new-username">New username</label>
+              <input
+                id="account-new-username"
+                name="new_username"
+                autoComplete="username"
+                required
+                maxLength={150}
+                aria-invalid={Boolean(errors.new_username)}
+                aria-describedby={
+                  errors.new_username ? "new-username-error" : "username-help"
+                }
+              />
+              {errors.new_username && (
+                <span
+                  id="new-username-error"
+                  className="password-error"
+                  role="alert"
+                >
+                  {[].concat(errors.new_username).join(" ")}
+                </span>
+              )}
+            </div>
+            <div className="field">
+              <label htmlFor="username-current-password">
+                Current password
+              </label>
+              <input
+                id="username-current-password"
+                name="current_password"
+                type="password"
+                autoComplete="current-password"
+                required
+                maxLength={1024}
+                aria-invalid={Boolean(errors.current_password)}
+                aria-describedby={
+                  errors.current_password
+                    ? "username-password-error"
+                    : undefined
+                }
+              />
+              {errors.current_password && (
+                <span
+                  id="username-password-error"
+                  className="password-error"
+                  role="alert"
+                >
+                  {[].concat(errors.current_password).join(" ")}
+                </span>
+              )}
+            </div>
+          </fieldset>
+          <p id="username-help" className="password-help">
+            Up to 150 characters: letters, numbers, and @ . + - _ symbols.
+            Choose a username that is not already in use.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={onClose} disabled={pending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Updating…" : "Update username"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ThemeToggle({ dark, onToggle }) {
+  return (
+    <button
+      className="theme-toggle"
+      type="button"
+      onClick={onToggle}
+      aria-label={`Switch to ${dark ? "light" : "dark"} mode`}
+      aria-pressed={dark}
+      title={`Switch to ${dark ? "light" : "dark"} mode`}
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {dark ? (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+          </>
+        ) : (
+          <path d="M20.5 13.3A8.5 8.5 0 0 1 10.7 3.5a8.5 8.5 0 1 0 9.8 9.8Z" />
+        )}
+      </svg>
+      <span>{dark ? "Light mode" : "Dark mode"}</span>
+    </button>
+  );
+}
 export default function App() {
+  const [dark, setDark] = useState(
+    () => document.documentElement.dataset.theme === "dark",
+  );
+  useEffect(() => {
+    const theme = dark ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("clinic-theme", theme);
+    } catch {
+      /* Theme still works when browser storage is unavailable. */
+    }
+  }, [dark]);
+  const themeToggle = (
+    <ThemeToggle dark={dark} onToggle={() => setDark((value) => !value)} />
+  );
   const [session, setSession] = useState(null);
   const [students, setStudents] = useState([]);
   const [medicines, setMedicines] = useState([]);
@@ -352,6 +625,10 @@ export default function App() {
   const [visits, setVisits] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [users, setUsers] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  const [staffPage, setStaffPage] = useState(1);
+  const [restockRequests, setRestockRequests] = useState([]);
+  const [inventoryNotices, setInventoryNotices] = useState([]);
   const [activities, setActivities] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
@@ -363,6 +640,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [info, setInfo] = useState("");
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [usernameOpen, setUsernameOpen] = useState(false);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 4500);
@@ -370,6 +649,7 @@ export default function App() {
     }
   }, [toast]);
   function navigate(next) {
+    setStaffPage(1);
     setPage(next);
     setSelected(null);
     setSearch("");
@@ -388,8 +668,32 @@ export default function App() {
     { id: "medicines", label: "Medicine stock", icon: "pill" },
     { id: "settings", label: "Settings", icon: "settings" },
     { id: "admin", label: "Administration", icon: "shield" },
+    { id: "registrar", label: "Mock Registrar", icon: "students" },
+    { id: "inventory", label: "Mock Inventory", icon: "pill" },
   ];
-  async function refresh() {
+  const refreshAccounts = useCallback(async () => {
+    try {
+      const staff = await listAll("users");
+      let administrators = [];
+      try {
+        administrators = await listAll("admins");
+      } catch (error) {
+        if (error.status !== 403) throw error;
+      }
+      setUsers(staff);
+      setStaffPage((current) =>
+        Math.min(current, Math.max(1, Math.ceil(staff.length / 10))),
+      );
+      setAdmins(administrators);
+      setAdmin(true);
+    } catch (e) {
+      if (e.status !== 403) throw e;
+      setUsers([]);
+      setAdmins([]);
+      setAdmin(false);
+    }
+  }, []);
+  const refresh = useCallback(async () => {
     const [ss, mm, rr, vv, hh, dd, dashboard] = await Promise.all([
       listAll("students"),
       listAll("medicines"),
@@ -407,15 +711,8 @@ export default function App() {
     setDispensations(dd);
     setSummary(dashboard.summary);
     setActivities(dashboard.recent_activity);
-    try {
-      setUsers(await listAll("users"));
-      setAdmin(true);
-    } catch (e) {
-      if (e.status !== 403) throw e;
-      setUsers([]);
-      setAdmin(false);
-    }
-  }
+    await refreshAccounts();
+  }, [refreshAccounts]);
   useEffect(() => {
     let active = true;
     request("/api/auth/me/")
@@ -438,8 +735,52 @@ export default function App() {
     return () => {
       active = false;
     };
+  }, [refresh]);
+  const refreshExternal = useCallback(async () => {
+    const [ss, mm, nn, rr] = await Promise.all([
+      listAll("students"),
+      listAll("medicines"),
+      request("/api/v1/inventory-notifications/"),
+      request("/api/v1/restock-requests/"),
+    ]);
+    setStudents(ss);
+    setMedicines(mm);
+    setInventoryNotices(nn);
+    setRestockRequests(rr);
+    setSelected((current) =>
+      current
+        ? ss.find((s) => s.student_id === current.student_id) || current
+        : null,
+    );
   }, []);
+  useEffect(() => {
+    if (!loggedIn) return;
+    let active = true;
+    let running = false;
+    const sync = async () => {
+      if (!active || running) return;
+      running = true;
+      try {
+        await refreshExternal();
+      } catch {
+        /* Existing data stays visible during temporary integration failures. */
+      } finally {
+        running = false;
+      }
+    };
+    sync();
+    const timer = setInterval(sync, 5000);
+    window.addEventListener("focus", sync);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", sync);
+    };
+  }, [loggedIn, refreshExternal]);
   function clearSession() {
+    setPasswordOpen(false);
+    setUsernameOpen(false);
+    setAdmins([]);
     setLoggedIn(false);
     setSession(null);
     setStudents([]);
@@ -466,14 +807,14 @@ export default function App() {
       low_stock_medicines: 0,
     });
   }
-  async function act(action) {
+  async function act(action, update = refresh) {
     if (busy) return;
     setBusy(true);
     setError("");
     try {
       await action();
       try {
-        await refresh();
+        await update();
         setToast("Changes saved.");
       } catch (e) {
         setError(
@@ -485,7 +826,10 @@ export default function App() {
       return true;
     } catch (e) {
       setError(
-        e.message + (e.body?.errors ? " " + JSON.stringify(e.body.errors) : ""),
+        e.message +
+          (e.body?.errors
+            ? " " + Object.values(e.body.errors).flat().join(" ")
+            : ""),
       );
       if (e.status === 401) {
         clearSession();
@@ -503,26 +847,31 @@ export default function App() {
       consultation: ["consultations", "consultation_id"],
       status: ["health-statuses", "status_id"],
       user: ["users", "user_id"],
+      admin: ["admins", "user_id"],
     };
     const [resource, key] = resources[editor.kind];
-    if (editor.kind !== "user") form.student_id = selected.student_id;
+    if (!["user", "admin"].includes(editor.kind))
+      form.student_id = selected.student_id;
     if (editor.kind === "record") {
       for (const key of ["height_cm", "weight_kg"])
         form[key] = form[key] ? Number(form[key]) : null;
     }
     const existing = editor.existing;
     if (
-      await act(() =>
-        request(
-          "/api/v1/" + resource + "/" + (existing ? existing[key] + "/" : ""),
-          existing ? "PATCH" : "POST",
-          form,
-        ),
+      await act(
+        () =>
+          request(
+            "/api/v1/" + resource + "/" + (existing ? existing[key] + "/" : ""),
+            existing ? "PATCH" : "POST",
+            form,
+          ),
+        ["user", "admin"].includes(editor.kind) ? refreshAccounts : refresh,
       )
     )
       setEditor(null);
   }
   function deleteRecord(kind, id) {
+    setError("");
     const resource = {
       record: "health-records",
       consultation: "consultations",
@@ -532,6 +881,29 @@ export default function App() {
       title: "Delete this " + kind + "?",
       action: () =>
         act(() => request("/api/v1/" + resource + "/" + id + "/", "DELETE")),
+    });
+  }
+  function confirmAccountAction(resource, account, action) {
+    setError("");
+    const deleting = action === "delete";
+    setConfirmation({
+      title: `${deleting ? "Delete" : action === "activate" ? "Activate" : "Deactivate"} ${account.username}?`,
+      requiresPassword: deleting,
+      description: deleting
+        ? "Permanently delete this sign-in account? This cannot be undone. Clinic medical records will remain. Enter your current password to confirm."
+        : action === "activate"
+          ? "Allow this account to sign in again? Previously signed-in sessions will stay signed out."
+          : "Prevent this account from signing in and sign out its existing sessions? You can activate it again later.",
+      action: (password) =>
+        act(
+          () =>
+            request(
+              `/api/v1/${resource}/${account.user_id}/${deleting ? "" : action + "/"}`,
+              deleting ? "DELETE" : "POST",
+              deleting ? { current_password: password } : undefined,
+            ),
+          refreshAccounts,
+        ),
     });
   }
   const title = selected
@@ -572,9 +944,17 @@ export default function App() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+  const staffTotalPages = Math.max(1, Math.ceil(filteredUsers.length / 10));
+  const currentStaffPage = Math.min(staffPage, staffTotalPages);
+  const visibleStaff = filteredUsers.slice(
+    (currentStaffPage - 1) * 10,
+    currentStaffPage * 10,
+  );
+  const adminLimitReached = admins.length >= 5;
   if (!loggedIn)
     return (
       <div className="login-page">
+        <div className="login-theme">{themeToggle}</div>
         <div className="login-form-wrap">
           <form
             className="login-form"
@@ -589,9 +969,9 @@ export default function App() {
                   password: credentials.get("password"),
                 });
                 setSession(data.user);
+                navigate("dashboard");
                 setLoggedIn(true);
                 await refresh();
-                navigate("dashboard");
               } catch (e) {
                 setLoginError(e.message);
                 setError(e.message);
@@ -649,7 +1029,12 @@ export default function App() {
           <div className="workspace-label">MANAGEMENT</div>
           {navigation
             .slice(3)
-            .filter((n) => n.id !== "admin" || admin)
+            .filter(
+              (n) =>
+                (n.id !== "admin" || admin) &&
+                (!["registrar", "inventory"].includes(n.id) ||
+                  session?.role === "OWNER"),
+            )
             .map((n) => (
               <button
                 key={n.id}
@@ -712,6 +1097,7 @@ export default function App() {
             <strong>{title}</strong>
           </div>
           <div className="topbar-right">
+            {themeToggle}
             <span className="demo-label">
               <i /> Connected workspace
             </span>
@@ -720,7 +1106,13 @@ export default function App() {
               <div className="avatar">CS</div>
               <div>
                 <strong>{session?.username}</strong>
-                <span>Clinic account</span>
+                <span>
+                  {session?.role === "OWNER"
+                    ? "Website owner"
+                    : session?.role === "ADMIN"
+                      ? "Clinic administrator"
+                      : "Clinic staff"}
+                </span>
               </div>
               <Icon name="chevron" size={15} />
             </button>
@@ -728,6 +1120,17 @@ export default function App() {
         </header>
         <main>
           {busy && <p role="status">Loading clinic data…</p>}
+          {inventoryNotices.length > 0 && page !== "medicines" && (
+            <div className="notice" role="status">
+              <span>{inventoryNotices[0].message}</span>
+              <button
+                className="button secondary"
+                onClick={() => navigate("medicines")}
+              >
+                View inventory updates
+              </button>
+            </div>
+          )}
           {error && (
             <div className="notice" role="alert">
               {error}
@@ -1010,6 +1413,20 @@ export default function App() {
             </>
           )}
 
+          {page === "registrar" && session?.role === "OWNER" && (
+            <MockWorkspace kind="registrar" onRefresh={refreshExternal} />
+          )}
+          {page === "inventory" && session?.role === "OWNER" && (
+            <MockWorkspace kind="inventory" onRefresh={refreshExternal} />
+          )}
+          {page === "students" && !selected && (
+            <GetStudent
+              onFound={async (student) => {
+                await refreshExternal();
+                openStudent(student);
+              }}
+            />
+          )}
           {page === "students" && !selected && (
             <>
               <div className="page-heading">
@@ -1232,13 +1649,13 @@ export default function App() {
                 )}
                 {tab === "Health record" &&
                   (studentRecords.length ? (
-                    studentRecords.map((r) => (
+                    studentRecords.map((r, index) => (
                       <article
                         className="record-article"
                         key={r.health_record_id}
                       >
                         <div className="record-meta">
-                          <span>Health record #{r.health_record_id}</span>
+                          <span>Health record #{index + 1}</span>
                           <div className="row-actions">
                             <button
                               className="icon-button"
@@ -1249,15 +1666,17 @@ export default function App() {
                             >
                               <Icon name="edit" size={17} />
                             </button>
-                            <button
-                              className="icon-button danger-icon"
-                              aria-label="Delete health record"
-                              onClick={() =>
-                                deleteRecord("record", r.health_record_id)
-                              }
-                            >
-                              <Icon name="trash" size={17} />
-                            </button>
+                            {admin && (
+                              <button
+                                className="icon-button danger-icon"
+                                aria-label="Delete health record"
+                                onClick={() =>
+                                  deleteRecord("record", r.health_record_id)
+                                }
+                              >
+                                <Icon name="trash" size={17} />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div className="vitals-grid">
@@ -1324,7 +1743,16 @@ export default function App() {
                               <Badge value="CONSULTATION" />
                               <span className="visit-date">
                                 {date(v.consulted_at, true)} · #
-                                {v.consultation_id}
+                                {visits
+                                  .filter(
+                                    (item) =>
+                                      item.student_id === selected.student_id,
+                                  )
+                                  .findIndex(
+                                    (item) =>
+                                      item.consultation_id ===
+                                      v.consultation_id,
+                                  ) + 1}
                               </span>
                             </div>
                             <div className="row-actions">
@@ -1340,18 +1768,20 @@ export default function App() {
                               >
                                 <Icon name="edit" size={17} />
                               </button>
-                              <button
-                                className="icon-button danger-icon"
-                                aria-label="Delete consultation"
-                                onClick={() =>
-                                  deleteRecord(
-                                    "consultation",
-                                    v.consultation_id,
-                                  )
-                                }
-                              >
-                                <Icon name="trash" size={17} />
-                              </button>
+                              {admin && (
+                                <button
+                                  className="icon-button danger-icon"
+                                  aria-label="Delete consultation"
+                                  onClick={() =>
+                                    deleteRecord(
+                                      "consultation",
+                                      v.consultation_id,
+                                    )
+                                  }
+                                >
+                                  <Icon name="trash" size={17} />
+                                </button>
+                              )}
                             </div>
                           </div>
                           <h3 className="complaint">{v.chief_complaint}</h3>
@@ -1399,15 +1829,17 @@ export default function App() {
                             >
                               <Icon name="edit" size={17} />
                             </button>
-                            <button
-                              className="icon-button danger-icon"
-                              aria-label="Delete health status"
-                              onClick={() =>
-                                deleteRecord("status", s.status_id)
-                              }
-                            >
-                              <Icon name="trash" size={17} />
-                            </button>
+                            {admin && (
+                              <button
+                                className="icon-button danger-icon"
+                                aria-label="Delete health status"
+                                onClick={() =>
+                                  deleteRecord("status", s.status_id)
+                                }
+                              >
+                                <Icon name="trash" size={17} />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <p className="status-remarks">
@@ -1460,6 +1892,12 @@ export default function App() {
                   Request stock information
                 </Button>
               </div>
+              <RestockPanel
+                medicines={medicines}
+                requests={restockRequests}
+                notices={inventoryNotices}
+                onRefresh={refreshExternal}
+              />
               <div className="medicine-summary">
                 <div>
                   <div className="stat-icon">
@@ -1625,8 +2063,14 @@ export default function App() {
                       <dd>{session?.email}</dd>
                     </div>
                     <div>
-                      <dt>is_staff</dt>
-                      <dd>{String(session?.is_staff)}</dd>
+                      <dt>Account access</dt>
+                      <dd>
+                        {session?.role === "OWNER"
+                          ? "Website owner"
+                          : session?.role === "ADMIN"
+                            ? "Clinic administrator"
+                            : "Clinic staff"}
+                      </dd>
                     </div>
                   </dl>
                   <div className="panel-foot">Authenticated Django session</div>
@@ -1644,8 +2088,11 @@ export default function App() {
                       <h3>Change username</h3>
                       <p>Update your clinic sign-in username.</p>
                     </div>
-                    <Button variant="secondary" disabled>
-                      Not available
+                    <Button
+                      variant="secondary"
+                      onClick={() => setUsernameOpen(true)}
+                    >
+                      Change username
                     </Button>
                   </div>
                   <div className="settings-option">
@@ -1653,14 +2100,15 @@ export default function App() {
                       <h3>Change password</h3>
                       <p>Update your account password.</p>
                     </div>
-                    <Button variant="secondary" disabled>
-                      Not available
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPasswordOpen(true)}
+                    >
+                      Change password
                     </Button>
                   </div>
                   <div className="notice">
-                    Username and password change endpoints are not defined in
-                    the supplied API contract. These actions are unavailable in
-                    this API.
+                    Username and password changes require your current password.
                   </div>
                 </section>
               </div>
@@ -1672,21 +2120,172 @@ export default function App() {
                 <div>
                   <div className="eyebrow">CLINIC MANAGEMENT</div>
                   <h1>Administration</h1>
-                  <p>Manage clinic staff profiles and account access.</p>
+                  <p>
+                    {session?.role === "OWNER"
+                      ? "Manage administrator and staff accounts."
+                      : "Manage staff profiles and account access."}
+                  </p>
                 </div>
-                <Button icon="plus" onClick={() => setEditor({ kind: "user" })}>
-                  Add staff account
-                </Button>
+                <div className="account-create-actions">
+                  {session?.role === "OWNER" && (
+                    <Button
+                      variant="secondary"
+                      icon="shield"
+                      disabled={busy || adminLimitReached}
+                      title={
+                        adminLimitReached
+                          ? "Delete an administrator before adding a new one."
+                          : undefined
+                      }
+                      onClick={() => setEditor({ kind: "admin" })}
+                    >
+                      Add administrator
+                    </Button>
+                  )}
+                  <Button
+                    icon="plus"
+                    onClick={() => setEditor({ kind: "user" })}
+                  >
+                    Add staff account
+                  </Button>
+                </div>
               </div>
               <div className="notice admin-notice">
                 <Icon name="shield" size={18} />
-                <span>Administrator access verified by the backend.</span>
+                <span>
+                  {session?.role === "OWNER"
+                    ? "Owner access: manage administrators and staff."
+                    : "Administrator access: manage staff accounts."}
+                </span>
               </div>
+              {session?.role === "OWNER" && (
+                <section className="panel admin-accounts-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h2>Administrators ({admins.length}/5)</h2>
+                      {adminLimitReached && (
+                        <p role="status">
+                          Administrator limit reached. Delete an administrator
+                          before adding a new one. Inactive accounts still
+                          count.
+                        </p>
+                      )}
+                      <p>
+                        Only the website owner can create and manage
+                        administrator accounts. Administrators can manage staff
+                        and use clinic features.
+                      </p>
+                      <p>
+                        Owner accounts are separate and cannot be deleted or
+                        deactivated here. Change your own username and password
+                        in Settings.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Username</th>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Access</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {admins.map((account) => (
+                          <tr key={account.user_id}>
+                            <td>
+                              {account.username}
+                              {account.user_id === session?.id ? " (you)" : ""}
+                            </td>
+                            <td>
+                              {`${account.first_name} ${account.last_name}`.trim() ||
+                                "—"}
+                            </td>
+                            <td>{account.email || "—"}</td>
+                            <td>Clinic administrator</td>
+                            <td>
+                              <Badge
+                                value={
+                                  account.is_active ? "ACTIVE" : "INACTIVE"
+                                }
+                              />
+                            </td>
+                            <td>
+                              <div className="row-actions">
+                                <button
+                                  className="text-link"
+                                  disabled={busy || !account.can_manage}
+                                  onClick={() =>
+                                    setEditor({
+                                      kind: "admin",
+                                      existing: account,
+                                    })
+                                  }
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className={`text-link ${account.is_active ? "danger-link" : ""}`}
+                                  disabled={busy || !account.can_manage}
+                                  title={
+                                    account.management_restriction || undefined
+                                  }
+                                  onClick={() =>
+                                    confirmAccountAction(
+                                      "admins",
+                                      account,
+                                      account.is_active
+                                        ? "deactivate"
+                                        : "activate",
+                                    )
+                                  }
+                                >
+                                  {account.is_active
+                                    ? "Deactivate"
+                                    : "Activate"}
+                                </button>
+                                <button
+                                  className="text-link danger-link"
+                                  disabled={busy || !account.can_manage}
+                                  title={
+                                    account.management_restriction || undefined
+                                  }
+                                  onClick={() =>
+                                    confirmAccountAction(
+                                      "admins",
+                                      account,
+                                      "delete",
+                                    )
+                                  }
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                              {account.management_restriction && (
+                                <small className="account-restriction">
+                                  {account.management_restriction}
+                                </small>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
               <section className="panel">
                 <div className="table-toolbar">
                   <Search
                     value={search}
-                    onChange={setSearch}
+                    onChange={(value) => {
+                      setSearch(value);
+                      setStaffPage(1);
+                    }}
                     placeholder="Search staff name, username, or email..."
                   />
                   <span className="muted-text">
@@ -1706,7 +2305,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => (
+                      {visibleStaff.map((u) => (
                         <tr key={u.user_id}>
                           <td>
                             <div className="student-cell">
@@ -1742,26 +2341,35 @@ export default function App() {
                               </button>
                               <button
                                 className={`text-link ${u.is_active ? "danger-link" : ""}`}
+                                disabled={busy || u.role === "ADMIN"}
+                                title={
+                                  u.role === "ADMIN"
+                                    ? "Manage this account in the administrators table."
+                                    : undefined
+                                }
                                 onClick={() =>
-                                  setConfirmation({
-                                    title: `${u.is_active ? "Deactivate" : "Activate"} ${u.username}?`,
-                                    action: () =>
-                                      act(() =>
-                                        request(
-                                          "/api/v1/users/" +
-                                            u.user_id +
-                                            "/" +
-                                            (u.is_active
-                                              ? "deactivate"
-                                              : "activate") +
-                                            "/",
-                                          "POST",
-                                        ),
-                                      ),
-                                  })
+                                  confirmAccountAction(
+                                    "users",
+                                    u,
+                                    u.is_active ? "deactivate" : "activate",
+                                  )
                                 }
                               >
                                 {u.is_active ? "Deactivate" : "Activate"}
+                              </button>
+                              <button
+                                className="text-link danger-link"
+                                disabled={busy || u.role === "ADMIN"}
+                                title={
+                                  u.role === "ADMIN"
+                                    ? "Manage this account in the administrators table."
+                                    : undefined
+                                }
+                                onClick={() =>
+                                  confirmAccountAction("users", u, "delete")
+                                }
+                              >
+                                Delete
                               </button>
                             </div>
                           </td>
@@ -1778,16 +2386,41 @@ export default function App() {
                 )}
                 <div className="table-footer">
                   <span>
+                    {filteredUsers.length
+                      ? `${(currentStaffPage - 1) * 10 + 1}–${Math.min(currentStaffPage * 10, filteredUsers.length)} of `
+                      : ""}
                     {filteredUsers.length}{" "}
                     {filteredUsers.length === 1 ? "account" : "accounts"}
                   </span>
-                  <span>Page 1 of 1</span>
+                  <nav
+                    className="staff-pagination"
+                    aria-label="Staff account pages"
+                  >
+                    <Button
+                      variant="secondary"
+                      disabled={busy || currentStaffPage === 1}
+                      onClick={() => setStaffPage(currentStaffPage - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span aria-live="polite">
+                      Page {currentStaffPage} of {staffTotalPages}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      disabled={busy || currentStaffPage === staffTotalPages}
+                      onClick={() => setStaffPage(currentStaffPage + 1)}
+                    >
+                      Next
+                    </Button>
+                  </nav>
                 </div>
               </section>
               <div className="sample-note">
                 <Icon name="lock" size={15} />
-                The contract supports activation and deactivation, not user
-                deletion or password changes.
+                Deactivation can be reversed. Deleting an account is permanent
+                and requires your current password. Clinic medical records
+                remain.
               </div>
             </>
           )}
@@ -1851,6 +2484,29 @@ export default function App() {
                     #{d.dispensation_id} · {d.student_id} · {d.medicine_id} ·{" "}
                     {d.quantity} · {d.status}
                   </span>
+                  {admin && (
+                    <Button
+                      variant="danger"
+                      disabled={busy}
+                      onClick={() => {
+                        setError("");
+                        setConfirmation({
+                          title: "Delete dispensing history?",
+                          description:
+                            "Permanently delete this clinic history entry? Medicine stock and Inventory transactions will stay unchanged. Use Roll back first if you need to return stock.",
+                          action: () =>
+                            act(() =>
+                              request(
+                                `/api/v1/medicine-dispensations/${d.dispensation_id}/`,
+                                "DELETE",
+                              ),
+                            ),
+                        });
+                      }}
+                    >
+                      Delete dispensing history
+                    </Button>
+                  )}
                   {d.status === "COMPLETED" && (
                     <Button
                       disabled={busy}
@@ -1978,6 +2634,45 @@ export default function App() {
           </button>
         </div>
       )}
+      {usernameOpen && (
+        <UsernameChangeDialog
+          username={session?.username}
+          onClose={() => setUsernameOpen(false)}
+          onSuccess={(user) => {
+            setSession(user);
+            setUsernameOpen(false);
+            setAdmins((values) =>
+              values.map((account) =>
+                account.user_id === user.id
+                  ? { ...account, username: user.username }
+                  : account,
+              ),
+            );
+            setToast(
+              "Username changed. Use your new username the next time you sign in.",
+            );
+          }}
+          onExpired={() => {
+            clearSession();
+            setLoginError("Your session has expired. Please sign in again.");
+          }}
+        />
+      )}
+      {passwordOpen && (
+        <PasswordChangeDialog
+          onClose={() => setPasswordOpen(false)}
+          onSuccess={() => {
+            setPasswordOpen(false);
+            setToast(
+              "Password changed. Your other sessions have been signed out.",
+            );
+          }}
+          onExpired={() => {
+            clearSession();
+            setLoginError("Your session has expired. Please sign in again.");
+          }}
+        />
+      )}
       {editor && (
         <Modal
           title={`${editor.existing ? "Edit" : "Create"} ${
@@ -1985,8 +2680,10 @@ export default function App() {
               ? "health record"
               : editor.kind === "status"
                 ? "health status"
-                : editor.kind === "user"
-                  ? "staff account"
+                : ["user", "admin"].includes(editor.kind)
+                  ? editor.kind === "admin"
+                    ? "administrator account"
+                    : "staff account"
                   : "consultation"
           }`}
           onClose={() => setEditor(null)}
@@ -2001,7 +2698,7 @@ export default function App() {
               <div className="notice compact">
                 Changes are submitted to the Clinic API.
               </div>
-              {editor.kind !== "user" && (
+              {!["user", "admin"].includes(editor.kind) && (
                 <div className="editor-student">
                   <Icon name="students" size={18} />
                   <strong>{selected && fullname(selected)}</strong>
@@ -2122,19 +2819,17 @@ export default function App() {
                     </>
                   );
                 })()}
-              {editor.kind === "user" &&
+              {["user", "admin"].includes(editor.kind) &&
                 (() => {
                   const u = editor.existing;
                   return (
                     <>
-                      {!u ? (
-                        <Field label="Username" name="username" required />
-                      ) : (
-                        <div className="editor-student">
-                          <strong>{u.username}</strong>
-                          <span>User #{u.user_id}</span>
-                        </div>
-                      )}
+                      <Field
+                        label="Username"
+                        name="username"
+                        value={u?.username}
+                        required
+                      />
                       <div className="form-grid">
                         <Field
                           label="First name"
@@ -2159,12 +2854,37 @@ export default function App() {
                             label="Temporary password"
                             name="password"
                             type="password"
+                            autoComplete="new-password"
                             required
                           />
                           <small className="muted-text">
-                            The server hashes this password for the new staff
-                            account.
+                            Choose a strong password for the new account.
                           </small>
+                          {editor.kind === "admin" && (
+                            <>
+                              <Field
+                                label="Confirm administrator password"
+                                name="confirm_password"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                              />
+                              <div className="notice compact">
+                                This administrator can manage staff and use all
+                                clinic features. Only the owner manages
+                                administrators. Choose a strong password and
+                                enter your own current password to authorize
+                                creation.
+                              </div>
+                              <Field
+                                label="Your current password"
+                                name="current_password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                              />
+                            </>
+                          )}
                         </>
                       )}
                     </>
@@ -2183,30 +2903,63 @@ export default function App() {
         </Modal>
       )}
       {confirmation && (
-        <Modal title={confirmation.title} onClose={() => setConfirmation(null)}>
-          <div className="modal-content">
-            <p>
-              This changes the clinic data through the API.
-              {confirmation.title.startsWith("Delete")
-                ? " This action cannot be undone."
-                : ""}
-            </p>
-          </div>
-          <div className="modal-actions">
-            <Button variant="secondary" onClick={() => setConfirmation(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              disabled={busy}
-              onClick={() => {
-                confirmation.action();
-                setConfirmation(null);
-              }}
-            >
-              Confirm
-            </Button>
-          </div>
+        <Modal
+          title={confirmation.title}
+          onClose={() => {
+            if (!busy) setConfirmation(null);
+          }}
+        >
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (busy) return;
+              const password = new FormData(event.currentTarget).get(
+                "current_password",
+              );
+              const succeeded = await confirmation.action(password);
+              if (succeeded !== false) setConfirmation(null);
+            }}
+            aria-busy={busy}
+          >
+            <div className="modal-content">
+              {error && (
+                <div className="notice" role="alert">
+                  {error}
+                </div>
+              )}
+              <p>
+                {confirmation.description ||
+                  "Confirm this change to the clinic data."}
+                {!confirmation.description &&
+                confirmation.title.startsWith("Delete")
+                  ? " This action cannot be undone."
+                  : ""}
+              </p>
+              {confirmation.requiresPassword && (
+                <div className="confirmation-password">
+                  <Field
+                    label="Your current password"
+                    name="current_password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmation(null)}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" disabled={busy} type="submit">
+                {busy ? "Working…" : "Confirm"}
+              </Button>
+            </div>
+          </form>
         </Modal>
       )}
       {medicine && (

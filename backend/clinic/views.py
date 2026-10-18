@@ -14,7 +14,7 @@ External data is accessed through service boundaries rather than local
 Clinic ORM models.
 """
 
-from authentication.permissions import IsClinicStaff
+from authentication.permissions import IsClinicStaff, IsClinicAdmin
 
 from .pagination import ClinicPagination
 
@@ -597,6 +597,10 @@ class StudentDetailView(APIView):
 )
 class HealthRecordViewSet(viewsets.ViewSet):
     permission_classes = [IsClinicStaff]
+
+    def get_permissions(self):
+        return [IsClinicAdmin()] if self.action == "destroy" else super().get_permissions()
+
     """
     CRUD controller for Clinic-owned HealthRecord mock resources.
 
@@ -816,6 +820,10 @@ class HealthRecordViewSet(viewsets.ViewSet):
 )
 class ConsultationViewSet(viewsets.ViewSet):
     permission_classes = [IsClinicStaff]
+
+    def get_permissions(self):
+        return [IsClinicAdmin()] if self.action == "destroy" else super().get_permissions()
+
     """CRUD controller for Clinic consultation mock resources."""
 
     serializer_class = ConsultationSerializer
@@ -1046,6 +1054,10 @@ class ConsultationViewSet(viewsets.ViewSet):
 )
 class HealthStatusViewSet(viewsets.ViewSet):
     permission_classes = [IsClinicStaff]
+
+    def get_permissions(self):
+        return [IsClinicAdmin()] if self.action == "destroy" else super().get_permissions()
+
     """CRUD controller for Clinic-owned HealthStatus mock resources."""
 
     serializer_class = HealthStatusSerializer
@@ -1341,6 +1353,10 @@ class MedicineDetailView(APIView):
 )
 class MedicineDispensationViewSet(viewsets.ViewSet):
     permission_classes = [IsClinicStaff]
+
+    def get_permissions(self):
+        return [IsClinicAdmin()] if self.action == "destroy" else super().get_permissions()
+
     """
     Clinic-owned medicine-dispensation controller.
 
@@ -1360,7 +1376,17 @@ class MedicineDispensationViewSet(viewsets.ViewSet):
         "post",
         "head",
         "options",
+        "delete",
     ]
+
+    @extend_schema(request=None, responses={204: None}, parameters=[OpenApiParameter(name="dispensation_id", type=OpenApiTypes.INT64, location=OpenApiParameter.PATH)])
+    def destroy(self, request, dispensation_id=None):
+        record = clinic_service.repository.get_dispensation(dispensation_id)
+        if record is None:
+            raise NotFound("Dispensing history not found.")
+        # History removal never changes the already completed Inventory transaction.
+        clinic_service.repository.delete_dispensation(dispensation_id)
+        return Response(status=204)
 
     def _serialize(
         self,

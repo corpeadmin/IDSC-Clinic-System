@@ -33,3 +33,5 @@ frontend/test-results/
 frontend/playwright-report/
 newman-results.json
 .validation-server.log
+
+.validation-regression.log
