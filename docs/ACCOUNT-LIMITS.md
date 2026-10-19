@@ -10,6 +10,6 @@ The Owner sees the administrator count out of five, a disabled Add administrator
 
 Nine backend tests exercise the fifth/sixth boundary, inactive accounts, owner exclusion, existing over-limit data, deletion/replacement, ten-row default/maximum, exact/empty pages, and deleted last pages. The browser boundary story uses an isolated database with an Owner and eleven seedstaff_00 through seedstaff_10 fixtures, verifies Staff pagination/search/deletion and the five-Admin cap/deactivation/deletion/replacement flow. Temporary Admins are cleaned up by the story. Existing staff-management browser stories search their fixture username so they work with paginated directories.
 
-For isolated browser validation, Vite accepts `CLINIC_API_TARGET` (default http://127.0.0.1:8000), and Playwright accepts `CLINIC_TEST_BASE_URL` (default http://127.0.0.1:5173). Normal development URLs are unchanged. Run the boundary story against the documented disposable fixtures, not existing user accounts.
+For isolated browser validation, Vite accepts `CLINIC_API_TARGET` (default http://127.0.0.1:8002), and Playwright accepts `CLINIC_TEST_BASE_URL` (default http://127.0.0.1:5173). Normal development URLs are unchanged. Run the boundary story against the documented disposable fixtures, not existing user accounts.
 
-No endpoint paths or operation count changed: 35 paths / 56 operations. The original backend contract tests and original Postman collection are unchanged.
+This feature did not add paths; the current overall inventory is 45 paths / 72 operations (5 public, 67 protected). The original backend contract tests and original Postman collection are unchanged.

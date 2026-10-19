@@ -1,34 +1,39 @@
-# IDSC Clinic frontend
+# Clinic website
 
-React/Vite UI integrated with the verified Django API. Start Django on `127.0.0.1:8002`, then run `npm ci` and `npm run dev` here. Open `http://127.0.0.1:5173`. Use an actual Django account; there is no hard-coded demo login. After migrations, a fresh installation displays one-time Owner registration. Creating the Owner signs you in; later visits use the shared login. Existing installations retain their Owner.
+React/Vite UI connected to Django sessions and CSRF. Follow [SETUP.md](../SETUP.md) for both servers. Inside frontend run `npm ci` then `npm run dev`. Normal address: http://localhost:5173. Default API target: http://127.0.0.1:8002; set CLINIC_API_TARGET before starting Vite to change it.
 
-Vite proxies `/api` to Django and keeps cookies/CSRF on the browser origin. Unsafe requests fetch a fresh CSRF token, including after login rotation. Production hosting must serve `/api` through a same-origin reverse proxy; `vite preview` alone does not provide the backend proxy.
+Fresh databases show first-Owner registration with automatic Dashboard login. Later visits show shared login. Settings changes own credentials; Owner manages Admin/Staff, Admin manages Staff, Staff has no Administration. Owner alone operates Mock Registrar/Inventory. Clinic features include records/statuses, dispensing/rollback, reports, restocks, notifications and light/dark theme. See [README.md](../README.md).
 
-Clinic business records use the verified in-memory service/repository and survive browser reloads but reset when Django restarts. Registrar and Inventory are deterministic mock integrations. Do not use this runtime for real patient data.
+src/api.js handles cookies, fresh CSRF tokens, errors and pagination. Vite proxies /api. Production needs a same-origin API reverse proxy; vite preview alone does not provide it. Mock business state resets on backend restart; accounts persist separately.
 
 ## Validation
 
-- `npm run lint`
-- `npm run build`
-- `npx playwright install chromium`
-- Start both servers, set `CLINIC_TEST_USERNAME`, `CLINIC_TEST_PASSWORD`, and `CLINIC_TEST_NEW_PASSWORD` to an isolated test administrator, then run `npm run test:e2e`.
+```powershell
+npm run lint
+npm run build
+npx playwright install chromium
+```
 
-The browser test mutates school demo data, creates/deletes a health record, dispenses and rolls back medicine, reads reports, and logs out. Run against a fresh mock backend; additional validation covers consultations, statuses and staff management. Do not use real accounts/data.
+Browser tests mutate accounts/data and credentials. Use a disposable database/backend, an isolated Owner, strong passwords and seeded mock data (CLINIC_EMPTY_START=0). The password story restores the original password.
 
-API behavior is centralized in `src/api.js`: session cookies, CSRF, error status/body preservation and pagination. UI layout provenance and branch comparison are documented in `../docs/CONSOLIDATION-AUDIT.md`.
+```powershell
+$env:CLINIC_TEST_BASE_URL="http://localhost:5173"
+$env:CLINIC_TEST_USERNAME="your_disposable_owner"
+$env:CLINIC_TEST_PASSWORD="your_disposable_owner_password"
+$env:CLINIC_TEST_NEW_PASSWORD="a_different_strong_test_password"
+npx playwright test clinic.spec.js password-change.spec.js account-management.spec.js account-lifecycle.spec.js role-hierarchy.spec.js external-workflows.spec.js mock-catalog.spec.js
+```
 
-Settings includes a self-service password dialog with field-specific validation errors. The password test requires an isolated administrator and two strong passwords; it restores the original password afterward.
+Replace example values with actual disposable credentials. For account-limits.spec.js, additionally provision eleven Staff named seedstaff_00 through seedstaff_10 in CLINIC_STAFF and start with an empty Admin directory. Run that boundary story separately against its fixtures; see [ACCOUNT-LIMITS.md](../docs/ACCOUNT-LIMITS.md). modal-focus.spec.js intercepts API responses and needs a running frontend but no live credentials.
 
-Settings also supports username changes with current-password verification. Administration lists Clinic administrators and provides Add administrator; creation verifies the acting admin's password and the new account's password confirmation. New accounts have the Clinic administrator role. The account-management browser story creates an isolated new admin, checks its access, renames it and verifies the new login.
+Run the registration story separately against a freshly migrated database with no Owner or completed registration latch. It creates its own Owner:
 
-Administrator and staff tables now offer deactivate/reactivate and delete. Delete asks for the acting administrator's password; self/protected accounts are disabled, and all backend safeguards still apply. The lifecycle browser story creates and removes disposable accounts.
+```powershell
+$env:CLINIC_TEST_FIRST_RUN="1"
+npx playwright test owner-registration.spec.js
+Remove-Item Env:CLINIC_TEST_FIRST_RUN
+```
 
+Point CLINIC_TEST_BASE_URL at the matching isolated frontend. Additional origins/ports need corresponding Django CORS/CSRF settings; default approved origins use port 5173. npm run test:e2e runs discovered tests; it does not provision accounts or special fixtures. Registration is skipped unless explicitly enabled.
 
-Owner sees Admin and Staff management; Admin sees Staff management only; Staff has no Administration access. The session `role` drives role labels and Owner controls, while the API enforces permissions. Owners use Settings to change their own username/password. See `docs/ROLE-HIERARCHY.md`. Six browser stories cover clinic and account flows.
-
-Staff management has ten-row pages, Previous/Next controls, a filtered range/count and search page reset. Owner sees a five-Admin capacity indicator and disabled creation at capacity; the API enforces the limit. See docs/ACCOUNT-LIMITS.md for the isolated boundary test fixtures.
-
-
-Owner navigation now includes Mock Registrar and Mock Inventory. Students has Get student by ID; profiles/status refresh every five seconds and on focus. Medicine stock has unread Inventory notifications and ALL/SELECTED restock requests; Owner fulfills in Mock Inventory. Record display numbers are consecutive per student, with stable API IDs. Staff cannot delete clinical records/history; Owner and Admin can. Sidebar scrolls on short screens. Mock business data resets on backend restart. See docs/EXTERNAL-WORKFLOWS.md.
-
-The local API proxy defaults to `http://127.0.0.1:8002`. Set `CLINIC_API_TARGET` before starting Vite to use a different backend address.
+[CURRENT-VALIDATION.md](../docs/CURRENT-VALIDATION.md) separates latest checks from historical evidence. Details: [roles](../docs/ROLE-HIERARCHY.md), [external workflows](../docs/EXTERNAL-WORKFLOWS.md), [Owner setup](../docs/OWNER-REGISTRATION.md).

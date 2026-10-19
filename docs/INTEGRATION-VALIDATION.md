@@ -1,5 +1,7 @@
 # Integration validation — 17 October 2026
 
+> Historical stage-by-stage evidence. Counts and branch names below describe the stage when recorded, not the current submission. Latest scope/results: [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md). Current setup: [SETUP.md](../SETUP.md).
+
 ## Preserved baseline
 
 Integration base: `195580e` (`origin/fix/pre-main-integration`), tree-equivalent to clean `main` at `f37fd5c`. At initial integration commit `a75cf4b`, the backend, existing tests, contract and original Postman collection were unchanged. The subsequent password-change extension adds a protected endpoint while preserving every original operation.

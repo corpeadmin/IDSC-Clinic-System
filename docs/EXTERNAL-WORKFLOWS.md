@@ -44,4 +44,6 @@ Selected request example: {"mode":"SELECTED","items":[{"medicine_id":"MED-0001",
 
 The mock API/workspaces are available only when CLINIC_DATA_BACKEND=mock. Like the pre-existing Clinic mock repository, Registrar/Inventory demo mutations, requests, notifications and clinic records are in process memory and reset when the backend restarts. Use one development backend process for this demonstration. These are school-project mock external systems, not connections to a real Registrar or Inventory installation. Account credentials remain in Django's database.
 
-Current schema inventory: 43 paths, 70 operations (3 public, 67 protected). New backend tests cover direct permission checks, enrollment transitions, current projections, notifications/receipts, selected/all delivery, duplicate and atomic fulfillment, catalog safeguards, authentication/CSRF and stock-preserving history deletion. Browser evidence is recorded in INTEGRATION-VALIDATION.md.
+Current schema inventory: 45 paths, 72 operations (5 public, 67 protected). New backend tests cover direct permission checks, enrollment transitions, current projections, notifications/receipts, selected/all delivery, duplicate and atomic fulfillment, catalog safeguards, authentication/CSRF and stock-preserving history deletion. Browser evidence is recorded in INTEGRATION-VALIDATION.md.
+
+Optional CLINIC_EMPTY_START=1 starts all mock stores empty rather than loading samples; accounts persist separately. Real adapters remain future work: [REAL-SYSTEM-INTEGRATION.md](REAL-SYSTEM-INTEGRATION.md).

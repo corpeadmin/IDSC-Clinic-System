@@ -12,7 +12,7 @@ The website has three roles, enforced by the backend API. Django `is_staff` is n
 
 ## Existing accounts
 
-An existing Django superuser is the website Owner. No ordinary Admin or Staff is automatically promoted. `demo_admin` is already a superuser in the current development database and therefore displays as Website owner after sign-in. `CLINIC_ADMIN` remains Admin; `CLINIC_STAFF` remains Staff. Owner has precedence, then Admin, then Staff if an account has multiple groups. Owners are excluded from both management directories, even if assigned either group. There is no API to create an Owner or change account roles. No database migration or password reset is required. A new installation provisions the Owner with Django `createsuperuser`.
+A fresh installation registers exactly one Owner through the website; registration immediately signs in and then closes permanently. Existing installations adopt their Owner through the singleton-registration migration. Optional CLI createsuperuser is a first-setup alternative only. There are no committed default credentials. CLINIC_ADMIN remains Admin and CLINIC_STAFF remains Staff; Owner has precedence. Owners are excluded from both management directories. Role changes through account-management payloads are rejected. See [OWNER-REGISTRATION.md](OWNER-REGISTRATION.md).
 
 ## Backend API
 
@@ -45,4 +45,4 @@ Owner sees the Administrators and Staff directories, with create, edit, activate
 
 `frontend/tests/role-hierarchy.spec.js` exercises Owner editing an Admin, Admin managing Staff, Staff clinical access and denied management, and Admin deleting Staff. `postman/Role-hierarchy.postman_collection.json` provides 42 API requests covering the hierarchy. Use disposable Owner credentials for validation.
 
-Current API inventory: 35 paths, 56 operations; 3 public and 53 protected. This role policy supersedes the earlier extension where Admins could manage other Admins.
+Current API inventory: 45 paths, 72 operations; 5 public and 67 protected. This role policy supersedes the earlier extension where Admins could manage other Admins.

@@ -1,5 +1,7 @@
 ﻿# Phase 7 — Tests & Contract Validation Evidence
 
+> Historical stage-by-stage evidence. Counts and branch names below describe the stage when recorded, not the current submission. Latest scope/results: [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md). Current setup: [SETUP.md](../SETUP.md).
+
 ## 1. Purpose
 
 This document records the verified testing, contract-validation, regression, lifecycle, and repository-integrity evidence produced during Phase 7 of the IDSC Clinic System backend.
