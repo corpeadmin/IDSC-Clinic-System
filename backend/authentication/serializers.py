@@ -307,3 +307,29 @@ class AdminCreateSerializer(StaffCreateSerializer):
         user.save()
         user.groups.add(admin_group)
         return user
+
+
+class OwnerSetupStatusSerializer(serializers.Serializer):
+    owner_registration_available = serializers.BooleanField(read_only=True)
+
+
+class OwnerRegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=1024)
+    confirm_password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=1024)
+
+    def validate_username(self, value):
+        return validate_available_username(value)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'The passwords do not match.'})
+        candidate = User(**{key: value for key, value in attrs.items() if key not in {'password', 'confirm_password'}})
+        try:
+            validate_password(attrs['password'], candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({'password': exc.messages}) from exc
+        return attrs

@@ -398,7 +398,7 @@ The health operation is public.
 
 The authoritative schemas, request bodies, response bodies, examples, and security metadata are defined in `openapi.yaml`.
 
-The current contract contains **70 operations**.
+The current contract contains **72 operations**.
 
 ### Authentication
 
@@ -817,7 +817,7 @@ When implementation, API contract, test evidence, or approved frontend design ch
 
 `POST /api/auth/password/change/` accepts `current_password`, `new_password`, and `confirm_password`. It requires the current session and a fresh `X-CSRFToken`, verifies the current password, requires a different matching new password, and applies configured Django password validators. Password strings are not trimmed and are limited to 1024 characters. Success returns only `{ "message": "Your password has been changed." }`. The current session is rotated and retained; other sessions expire on their next request. Validation errors use HTTP 400 Problem Details with field errors.
 
-Open Settings > Change password to use the flow. See `docs/PASSWORD-CHANGE.md` for details. All 45 pre-existing operations are preserved; the current schema has 43 paths and 70 operations. The original Postman collection remains a 45-request regression suite; the isolated password-change collection adds its own flow.
+Open Settings > Change password to use the flow. See `docs/PASSWORD-CHANGE.md` for details. All 45 pre-existing operations are preserved; the current schema has 45 paths and 72 operations. The original Postman collection remains a 45-request regression suite; the isolated password-change collection adds its own flow.
 
 
 ## Username and administrator management
@@ -826,7 +826,7 @@ Open Settings > Change password to use the flow. See `docs/PASSWORD-CHANGE.md` f
 
 `GET /api/v1/admins/` lists administrators and `POST /api/v1/admins/` creates an additional Clinic administrator. Both require existing Clinic administrator permission. Creation accepts `username`, `password`, `confirm_password`, the acting administrator's `current_password`, and optional `first_name`, `last_name`, `email`. Strong password validation applies. The new account receives `CLINIC_ADMIN`, never Django superuser privileges. Staff cannot create or list administrators. All writes require CSRF.
 
-Use Settings > Change username or Administration > Add administrator. See `docs/ACCOUNT-MANAGEMENT.md`. The schema contains 43 paths and 70 operations (3 public, 67 protected); every original API definition remains unchanged.
+Use Settings > Change username or Administration > Add administrator. See `docs/ACCOUNT-MANAGEMENT.md`. The schema contains 45 paths and 72 operations (5 public, 67 protected); every original API definition remains unchanged.
 
 
 ## Account deactivation and deletion
@@ -849,3 +849,8 @@ Staff management now shows ten accounts per page with working Previous/Next cont
 ## Registrar and Inventory demo workflows
 
 Consecutive visible record labels, Owner/Admin-only clinical/history deletion, Get student by Registrar ID, automatic profile/status updates, Owner-operated Mock Registrar/Inventory workspaces, medicine notifications and selected/all restock requests with Inventory fulfillment are now connected to backend APIs. Internal record IDs stay stable; deleting dispensing history never reverses stock. These mock data reset on backend restart. See [EXTERNAL-WORKFLOWS.md](docs/EXTERNAL-WORKFLOWS.md) for roles, routes, examples and demonstration limits. Current inventory: 43 paths / 70 operations.
+
+
+## First-time Owner registration
+
+Run migrations, then open the website. A fresh installation shows Owner registration, creates exactly one Owner, and opens Dashboard automatically. Logout and later visits show the shared Owner/Admin/Staff login. Existing installations keep their Owner; registration remains closed. See [OWNER-REGISTRATION.md](docs/OWNER-REGISTRATION.md) for API details, migration behavior and validation.

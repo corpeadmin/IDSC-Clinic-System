@@ -22,6 +22,8 @@ HTTP_METHODS = {
 
 
 OPERATION_SUMMARIES = {
+    ("GET", "/api/auth/setup/"): "Check first Owner registration availability",
+    ("POST", "/api/auth/owner/register/"): "Register the first and only Owner",
     ('POST', '/api/v1/students/import/'): 'Get student by Registrar ID',
     ('GET', '/api/v1/mock/registrar/students/'): 'List mock Registrar students (owner only)',
     ('POST', '/api/v1/mock/registrar/students/'): 'Add mock Registrar student (owner only)',
@@ -100,6 +102,8 @@ OPERATION_SUMMARIES = {
 
 
 PUBLIC_OPERATIONS = {
+    ("GET", "/api/auth/setup/"),
+    ("POST", "/api/auth/owner/register/"),
     ("GET", "/api/v1/health"),
     ("GET", "/api/auth/csrf/"),
     ("POST", "/api/auth/login/"),

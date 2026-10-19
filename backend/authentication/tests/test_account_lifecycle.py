@@ -153,10 +153,11 @@ class AccountLifecycleTests(TestCase):
         for action in ["delete", "deactivate", "activate"]:
             self.assertEqual(self.action(target=self.root, action=action).status_code, 403)
 
-    def test_owner_cannot_delete_another_owner(self):
+    def test_second_owner_is_rejected(self):
+        from django.core.exceptions import ValidationError
         self.target.is_superuser = True
-        self.target.save(update_fields=["is_superuser"])
-        self.assertEqual(self.action(action="delete").status_code, 403)
+        with self.assertRaises(ValidationError):
+            self.target.save(update_fields=["is_superuser"])
 
     def test_directory_is_owner_only_and_excludes_owner(self):
         self.client.force_login(self.admin)

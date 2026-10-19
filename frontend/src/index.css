@@ -2186,3 +2186,16 @@ textarea::placeholder {
 .sidebar > * {
   flex-shrink: 0;
 }
+
+.owner-registration fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.owner-registration .field [role="alert"] {
+  color: var(--danger);
+  font-size: 12px;
+}

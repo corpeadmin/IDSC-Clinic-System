@@ -342,3 +342,51 @@ class AdminAccessView(APIView):
     def post(self, request, user_id):
         user = change_account_access(request.user, user_id, "admin", self.action)
         return Response(AdminAccountSerializer(user, context={"request": request}).data)
+
+
+from .models import OwnerRegistration
+from .owner_setup import registration_available
+from .serializers import OwnerRegisterSerializer, OwnerSetupStatusSerializer
+from clinic.exceptions import ConflictError
+
+
+@extend_schema(responses=OwnerSetupStatusSerializer, description="Public first-run status only. Inactive or previously registered Owners keep registration closed.")
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def owner_setup_status(request):
+    response = Response({'owner_registration_available': registration_available()})
+    response['Cache-Control'] = 'no-store'
+    return response
+
+
+@sensitive_post_parameters('password', 'confirm_password')
+@extend_schema(request=OwnerRegisterSerializer, responses={201: LoginResponseSerializer, 409: OpenApiResponse(description="Owner registration is already complete.")}, description="One-time first Owner registration. Requires CSRF even without a session. Creates exactly one Owner, starts a Django session, and permanently closes registration.")
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_protect
+def owner_register(request):
+    # Check before validation to avoid offering a usable registration endpoint once claimed.
+    if not registration_available():
+        raise ConflictError('Owner registration is already complete. Please log in.')
+    serializer = OwnerRegisterSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        with transaction.atomic():
+            # First acquire a write lock, including on SQLite, before checking availability.
+            changed = OwnerRegistration.objects.filter(pk=1).update(id=1)
+            if not changed:
+                OwnerRegistration.objects.create(pk=1)
+            state = OwnerRegistration.objects.select_for_update().get(pk=1)
+            if state.owner_id is not None or not registration_available():
+                raise ConflictError('Owner registration is already complete. Please log in.')
+            data = dict(serializer.validated_data)
+            data.pop('confirm_password')
+            user = User.objects.create_superuser(**data)
+            state.owner = user
+            state.save(update_fields=['owner'])
+    except IntegrityError as exc:
+        raise ConflictError('Owner registration is no longer available or the username is already in use. Please reload.') from exc
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    response = Response({'message': 'Owner account created.', 'user': SessionUserSerializer(user).data}, status=201)
+    response['Cache-Control'] = 'no-store'
+    return response

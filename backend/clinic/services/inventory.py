@@ -6,6 +6,7 @@ data. Clinic never owns the medicine catalog, medicine stock, or Inventory
 stock transactions.
 """
 
+import os
 from copy import deepcopy
 
 
@@ -58,6 +59,9 @@ class MockInventoryService:
                 "status": "ACTIVE",
             },
         ]
+
+        if os.environ.get("CLINIC_EMPTY_START") == "1":
+            self._medicines = []
 
         self._transactions = {}
         self._next_transaction_number = 1

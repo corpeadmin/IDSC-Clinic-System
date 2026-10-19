@@ -1,3 +1,4 @@
+import OwnerRegistration from "./OwnerRegistration";
 import { GetStudent, RestockPanel, MockWorkspace } from "./ExternalSystems";
 import {
   useCallback,
@@ -630,6 +631,7 @@ export default function App() {
   const [report, setReport] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [loggedIn, setLoggedIn] = useState(false);
+  const [ownerSetup, setOwnerSetup] = useState(null);
   const [selected, setSelected] = useState(null);
   const [records, setRecords] = useState([]);
   const [visits, setVisits] = useState([]);
@@ -725,9 +727,15 @@ export default function App() {
   }, [refreshAccounts]);
   useEffect(() => {
     let active = true;
-    request("/api/auth/me/")
+    request("/api/auth/setup/")
+      .then((status) => {
+        if (!active) return null;
+        const available = status.owner_registration_available === true;
+        setOwnerSetup(available);
+        return available ? null : request("/api/auth/me/");
+      })
       .then(async (user) => {
-        if (active) {
+        if (active && user) {
           setSession(user);
           setLoggedIn(true);
           await refresh();
@@ -961,6 +969,56 @@ export default function App() {
     currentStaffPage * 10,
   );
   const adminLimitReached = admins.length >= 5;
+  if (!loggedIn && ownerSetup === null)
+    return (
+      <div className="login-page">
+        <div className="login-form-wrap">
+          <div className="login-form">
+            <Logo />
+            <p role="status">
+              {busy ? "Checking system setup…" : "Unable to load sign-in."}
+            </p>
+            {loginError && <p role="alert">{loginError}</p>}
+            {!busy && (
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  if (!loggedIn && ownerSetup)
+    return (
+      <div className="login-page">
+        <div className="login-theme">{themeToggle}</div>
+        <div className="login-form-wrap">
+          <div className="login-brand">
+            <Logo />
+          </div>
+          <OwnerRegistration
+            onAlreadyRegistered={() => {
+              setOwnerSetup(false);
+              setLoginError(
+                "Owner registration is already complete. Please log in.",
+              );
+            }}
+            onComplete={async (user) => {
+              setOwnerSetup(false);
+              setSession(user);
+              navigate("dashboard");
+              setLoggedIn(true);
+              try {
+                await refresh();
+              } catch (e) {
+                setError(
+                  "Owner created, but loading the workspace failed. Please refresh. " +
+                    e.message,
+                );
+              }
+            }}
+          />
+        </div>
+      </div>
+    );
   if (!loggedIn)
     return (
       <div className="login-page">
@@ -995,7 +1053,7 @@ export default function App() {
             </div>
             <span className="eyebrow">WELCOME BACK</span>
             <h2>Log in to your account</h2>
-            <p>Access your clinic workspace.</p>
+            <p>Owner, Admin and Staff sign in here.</p>
             <Field label="Username" name="email" required />
             <Field label="Password" name="password" type="password" required />
             <div className="login-forgot-row">

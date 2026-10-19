@@ -1,6 +1,6 @@
 # IDSC Clinic frontend
 
-React/Vite UI integrated with the verified Django API. Start Django on `127.0.0.1:8002`, then run `npm ci` and `npm run dev` here. Open `http://127.0.0.1:5173`. Use an actual Django account; there is no hard-coded demo login. Create an administrator with `python manage.py createsuperuser` from `backend/` after migrations.
+React/Vite UI integrated with the verified Django API. Start Django on `127.0.0.1:8002`, then run `npm ci` and `npm run dev` here. Open `http://127.0.0.1:5173`. Use an actual Django account; there is no hard-coded demo login. After migrations, a fresh installation displays one-time Owner registration. Creating the Owner signs you in; later visits use the shared login. Existing installations retain their Owner.
 
 Vite proxies `/api` to Django and keeps cookies/CSRF on the browser origin. Unsafe requests fetch a fresh CSRF token, including after login rotation. Production hosting must serve `/api` through a same-origin reverse proxy; `vite preview` alone does not provide the backend proxy.
 
