@@ -1,5 +1,11 @@
 import { GetStudent, RestockPanel, MockWorkspace } from "./ExternalSystems";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 import { request, listAll } from "./api";
 import idscLogo from "./assets/idsc-logo.png";
 const paths = {
@@ -202,16 +208,20 @@ function Empty({
 }
 function Modal({ title, children, onClose }) {
   const ref = useRef(null);
+  const closeFromKeyboard = useEffectEvent(() => onClose());
   useEffect(() => {
     const previous = document.activeElement;
     const panel = ref.current;
-    panel?.querySelector("input, select, textarea, button")?.focus();
+    const firstField = panel?.querySelector(
+      'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled)',
+    );
+    (firstField ?? panel?.querySelector("button:not(:disabled)"))?.focus();
     function key(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeFromKeyboard();
       if (e.key === "Tab" && panel) {
         const items = Array.from(
           panel.querySelectorAll(
-            "button:not(:disabled), input, select, textarea, [tabindex='0']",
+            "button:not(:disabled), input:not(:disabled):not([type='hidden']), select:not(:disabled), textarea:not(:disabled), [tabindex='0']",
           ),
         );
         const first = items[0],
@@ -230,7 +240,7 @@ function Modal({ title, children, onClose }) {
       document.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div
       className="modal-backdrop"

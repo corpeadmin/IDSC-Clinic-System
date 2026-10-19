@@ -361,3 +361,10 @@ Original Postman baseline passed unchanged: **45 requests / 46 assertions**, zer
 - Desktop sidebar scrolling and the medicine/restock/notification screen were visually checked. Test screenshots are in the ignored frontend/test-results directory.
 - Isolated validation services used 8001/5174 and disposable accounts. Those services, credentials, API response reports and database were removed afterward. User services remain on **8000/5173**. Main was not modified; changes remain local on integration/clinic-final.
 - New mock state is process-local, matching the existing mock domain; it resets on backend restart. Real student/medicine source systems are not connected. Django account credentials were not changed.
+
+
+## Password dialog focus fix (Desktop copy, 2026-10-19)
+
+The shared Modal focus effect previously depended on an inline onClose callback. Background integration refreshes changed that callback and reran focus initialization, selecting the close button while the user typed. Focus initialization/cleanup now run only when the modal mounts/unmounts; an Effect Event reads the latest keyboard-close callback so pending-submit guards remain current. Initial focus prefers an enabled form field, and the Tab loop excludes disabled/hidden inputs.
+
+`frontend/tests/modal-focus.spec.js` passed (11.1 seconds). It uses intercepted API fixtures, types slowly across a confirmed integration refresh, checks the typed value and focused field, verifies Tab/Shift+Tab wrapping, prevents Escape from closing a pending password update, and verifies Escape/focus restoration after the request finishes. No real account password is submitted or changed. Frontend lint and production build passed. Changes are local and unpushed.

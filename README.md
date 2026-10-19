@@ -550,7 +550,7 @@ Redoc:
 
 The generated contract uses the canonical local server:
 
-`http://127.0.0.1:8000`
+`http://127.0.0.1:8002`
 
 The current verified operation inventory is:
 
@@ -636,16 +636,16 @@ python manage.py check
 ### Run the server
 
 ```powershell
-python manage.py runserver 8000
+python manage.py runserver 8002
 ```
 
 Backend:
 
-`http://127.0.0.1:8000/`
+`http://127.0.0.1:8002/`
 
 Swagger:
 
-`http://127.0.0.1:8000/docs`
+`http://127.0.0.1:8002/docs`
 
 ### Finals PostgreSQL dependencies
 

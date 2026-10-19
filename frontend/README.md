@@ -1,6 +1,6 @@
 # IDSC Clinic frontend
 
-React/Vite UI integrated with the verified Django API. Start Django on `127.0.0.1:8000`, then run `npm ci` and `npm run dev` here. Open `http://127.0.0.1:5173`. Use an actual Django account; there is no hard-coded demo login. Create an administrator with `python manage.py createsuperuser` from `backend/` after migrations.
+React/Vite UI integrated with the verified Django API. Start Django on `127.0.0.1:8002`, then run `npm ci` and `npm run dev` here. Open `http://127.0.0.1:5173`. Use an actual Django account; there is no hard-coded demo login. Create an administrator with `python manage.py createsuperuser` from `backend/` after migrations.
 
 Vite proxies `/api` to Django and keeps cookies/CSRF on the browser origin. Unsafe requests fetch a fresh CSRF token, including after login rotation. Production hosting must serve `/api` through a same-origin reverse proxy; `vite preview` alone does not provide the backend proxy.
 
@@ -30,3 +30,5 @@ Staff management has ten-row pages, Previous/Next controls, a filtered range/cou
 
 
 Owner navigation now includes Mock Registrar and Mock Inventory. Students has Get student by ID; profiles/status refresh every five seconds and on focus. Medicine stock has unread Inventory notifications and ALL/SELECTED restock requests; Owner fulfills in Mock Inventory. Record display numbers are consecutive per student, with stable API IDs. Staff cannot delete clinical records/history; Owner and Admin can. Sidebar scrolls on short screens. Mock business data resets on backend restart. See docs/EXTERNAL-WORKFLOWS.md.
+
+The local API proxy defaults to `http://127.0.0.1:8002`. Set `CLINIC_API_TARGET` before starting Vite to use a different backend address.

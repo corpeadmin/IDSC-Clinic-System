@@ -334,13 +334,13 @@ The Django test runner creates and destroys its own test database.
 From `backend`:
 
 ```powershell
-python manage.py runserver 127.0.0.1:8000
+python manage.py runserver 127.0.0.1:8002
 ```
 
 The local backend is then available at:
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:8002
 ```
 
 ---
@@ -434,13 +434,13 @@ The currently committed frontend is still a React/Vite starter and is not eviden
 Open the canonical Swagger UI:
 
 ```text
-http://127.0.0.1:8000/docs
+http://127.0.0.1:8002/docs
 ```
 
 Dynamic schema:
 
 ```text
-http://127.0.0.1:8000/api/schema/
+http://127.0.0.1:8002/api/schema/
 ```
 
 Verified contract baseline:
@@ -472,7 +472,7 @@ postman/IDSC-Clinic-System.postman_collection.json
 Canonical collection base URL:
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:8002
 ```
 
 With the backend running and the local Clinic admin provisioned:
@@ -576,7 +576,7 @@ Then:
 
 ```powershell
 python manage.py check
-python manage.py runserver 127.0.0.1:8000
+python manage.py runserver 127.0.0.1:8002
 ```
 
 ### Terminal 2 — Frontend
@@ -635,4 +635,4 @@ These rules are part of the release process, not optional workflow suggestions.
 
 ## Frontend integration branch
 
-The clinic frontend now connects to the verified Django API. Start Django at `127.0.0.1:8000`, run `npm ci` and `npm run dev` in `frontend`, and open `http://127.0.0.1:5173`. Create an actual Django user with `python manage.py createsuperuser`; the legacy simulated login is removed. The local Vite proxy handles `/api` while preserving session and CSRF cookies. See `frontend/README.md` for browser validation and production proxy requirements. Business data remains mock/in-memory and resets on backend restart.
+The clinic frontend now connects to the verified Django API. Start Django at `127.0.0.1:8002`, run `npm ci` and `npm run dev` in `frontend`, and open `http://127.0.0.1:5173`. Create an actual Django user with `python manage.py createsuperuser`; the legacy simulated login is removed. The local Vite proxy handles `/api` while preserving session and CSRF cookies. See `frontend/README.md` for browser validation and production proxy requirements. Business data remains mock/in-memory and resets on backend restart.
