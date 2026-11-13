@@ -1,5 +1,7 @@
 # Deployment profile and boundaries
 
+For the proposed hosted setup, see the [Supabase, Vercel, and Render deployment plan](CLOUD-DEPLOYMENT-PLAN.md).
+
 ## Verification branch container profile
 
 `deploy/compose.yml` supplies PostgreSQL, one Gunicorn worker, and Caddy HTTPS
