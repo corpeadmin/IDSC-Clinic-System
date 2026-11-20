@@ -2,7 +2,7 @@
 
 ## Current local validation — 20 November 2026
 
-Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. Implementation commit `2267508` is published to `corpeadmin/IDSC-Clinic-System` on this branch. GitHub Actions verification is in progress. JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.
+Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. Implementation commit `2267508` is published to `corpeadmin/IDSC-Clinic-System` on this branch. All 12 GitHub Actions jobs passed for code commit `c6a3302`: [successful run](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44762774676). JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.
 
 | Check | Result and scope |
 | --- | --- |
@@ -17,7 +17,11 @@ Recovery sends only to the saved email of an active account with a usable passwo
 
 The user-requested local account reset was backed up; all prior accounts and sessions were removed while clinic table counts remained unchanged. First-run registration was verified open. The user then registered a fresh Owner and confirmed recovery worked. This was local maintenance, not a new account-deletion API or a change to the rule preventing Owner self-deletion.
 
-Public deployment, real Registrar/Inventory gateway integration, and green GitHub Actions runs for this branch remain unverified until the current checks complete. Automated tests use isolated fixtures; manual Gmail delivery is separately user-confirmed. See [JWT-AUTHENTICATION.md](JWT-AUTHENTICATION.md) and [PASSWORD-RECOVERY.md](PASSWORD-RECOVERY.md).
+Public deployment and real Registrar/Inventory gateway integration remain unverified. GitHub Actions passed all 12 jobs for `c6a3302`, including both database backends, physical restore, browser workflows, Postman, dependencies, contracts and private HTTPS container smoke. Automated tests use isolated fixtures; manual Gmail delivery is separately user-confirmed. See [JWT-AUTHENTICATION.md](JWT-AUTHENTICATION.md) and [PASSWORD-RECOVERY.md](PASSWORD-RECOVERY.md).
+
+## CI follow-up
+
+The first CI runs exposed outdated development dependencies and a PostgreSQL backup-client/server version mismatch. The lockfile now resolves Vite 8.3.8, ESLint 10.15.0, minimatch 11.0.9 and Zod 4.6.7; npm audit reports zero known vulnerabilities. Frontend lint/build and all browser jobs passed with these resolutions. The PostgreSQL job now uses backup clients from the same official PostgreSQL 16 image as its test service; physical backup/restore passed. Audit thresholds and test assertions were retained. These are checkout/CI fixes; no public deployment is claimed.
 
 ## Historical submission records
 
