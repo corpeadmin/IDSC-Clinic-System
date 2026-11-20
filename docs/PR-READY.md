@@ -1,3 +1,15 @@
+# Add JWT login and Gmail password recovery
+
+Current local head: `integration/final-jwt`; base: `submission/clinic-final-v2` at `ad361f1`. Changes have not been committed or pushed.
+
+Login now issues revocable JWT access tokens while preserving session compatibility. The browser holds tokens in memory and renews through its CSRF-protected session. Forgot password opens an email form and sends a 30-minute, single-use reset link to the saved recovery address. Unknown emails show a 404 error; mail failures show 503. Resetting the password revokes existing sessions and JWTs. The OpenAPI contract, SMTP example configuration, deployment environment wiring and browser/backend regressions are updated.
+
+Validation: 340 of 342 backend tests passed with a test-only fast hasher; two PostgreSQL-only tests skipped. All 18 recovery tests passed with configured hashing. Browser recovery, frontend lint/build, static/runtime contract equality and Redocly lint passed. Real Gmail authentication/submission succeeded and the user confirmed receipt and reset. No credentials, recipient addresses or reset tokens are included in this description. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
+
+Public hosting, a real institutional API gateway call and GitHub Actions results for this unpushed change are not verified. Deployment after tests on main remains outstanding.
+
+## Historical verification PR description
+
 # Verify final-project reliability, restoration and CI
 
 Base: improvement/clinic-final-10of10. Head: improvement/clinic-final-verification.

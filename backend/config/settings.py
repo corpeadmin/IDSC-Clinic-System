@@ -243,6 +243,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "authentication.jwt_auth.ClinicJWTAuthentication",
         "authentication.authentication.ClinicSessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -400,4 +401,55 @@ if REGISTRAR_BACKEND != "mock" or INVENTORY_BACKEND not in ("mock", "durable_moc
 
 REST_FRAMEWORK["NUM_PROXIES"] = (
     0  # Do not trust arbitrary X-Forwarded-For for login limiting.
+)
+
+JWT_ACCESS_SECONDS = int(os.environ.get("JWT_ACCESS_SECONDS", "900"))
+JWT_ISSUER = "idsc-clinic"
+JWT_AUDIENCE = "idsc-clinic-api"
+if not 60 <= JWT_ACCESS_SECONDS <= 3600:
+    raise ImproperlyConfigured("JWT_ACCESS_SECONDS must be between 60 and 3600.")
+
+# Explicit Django 6.1 mailer options. SMTP credentials are private environment values.
+from urllib.parse import urlsplit
+
+PASSWORD_RESET_TIMEOUT = 1800
+PASSWORD_RESET_FRONTEND_URL = os.environ.get(
+    "PASSWORD_RESET_FRONTEND_URL",
+    ("https://" + ALLOWED_HOSTS[0]) if not DEBUG else (
+        CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else "http://localhost:5173"
+    ),
+).rstrip("/")
+reset_origin = urlsplit(PASSWORD_RESET_FRONTEND_URL)
+if (
+    not reset_origin.hostname or reset_origin.username or reset_origin.password
+    or reset_origin.query or reset_origin.fragment or reset_origin.path not in ("", "/")
+    or not (reset_origin.scheme == "https" or (
+        DEBUG and reset_origin.scheme == "http" and reset_origin.hostname in ("localhost", "127.0.0.1")
+    ))
+):
+    raise ImproperlyConfigured("PASSWORD_RESET_FRONTEND_URL must be the trusted HTTPS website origin (loopback HTTP is allowed in development).")
+
+reset_mail_backend = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend" if os.environ.get("EMAIL_HOST") or not DEBUG
+    else "django.core.mail.backends.filebased.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", os.environ.get("EMAIL_HOST_USER", "clinic@localhost"))
+reset_mail_options = {}
+if reset_mail_backend == "django.core.mail.backends.smtp.EmailBackend":
+    reset_mail_options = {
+        "host": os.environ.get("EMAIL_HOST", "smtp.gmail.com"),
+        "port": int(os.environ.get("EMAIL_PORT", "587")),
+        "username": os.environ.get("EMAIL_HOST_USER", ""),
+        "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+        "use_tls": os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes"),
+        "use_ssl": os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes"),
+        "timeout": 10,
+    }
+elif reset_mail_backend == "django.core.mail.backends.filebased.EmailBackend":
+    reset_mail_options = {"file_path": os.environ.get("EMAIL_FILE_PATH", str(BASE_DIR.parent / ".runtime" / "reset-emails"))}
+MAILERS = {"default": {"BACKEND": reset_mail_backend, "OPTIONS": reset_mail_options}}
+PASSWORD_RESET_EMAIL_CONFIGURED = (
+    reset_mail_backend != "django.core.mail.backends.smtp.EmailBackend"
+    or bool(reset_mail_options.get("host") and reset_mail_options.get("username") and reset_mail_options.get("password"))
 )

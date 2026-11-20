@@ -1,10 +1,18 @@
 # Clinic website
 
+JWT update: install the updated backend requirements and run migrations before starting the application. The website uses memory-held bearer tokens with CSRF-protected session renewal; [authentication details](../docs/JWT-AUTHENTICATION.md). Existing accounts are retained.
+
 React/Vite UI connected to Django sessions and CSRF. Follow [SETUP.md](../SETUP.md) for both servers. Inside frontend run `npm ci` then `npm run dev`. Normal address: http://localhost:5173. Default API target: http://127.0.0.1:8002; set CLINIC_API_TARGET before starting Vite to change it.
 
 Fresh databases show first-Owner registration with automatic Dashboard login. Later visits show shared login. Settings changes own credentials; Owner manages Admin/Staff, Admin manages Staff, Staff has no Administration. Owner alone operates Mock Registrar/Inventory. Clinic features include records/statuses, dispensing/rollback, reports, restocks, notifications and light/dark theme. See [README.md](../README.md).
 
 src/api.js handles cookies, fresh CSRF tokens, errors and pagination. Vite proxies /api. Production needs a same-origin API reverse proxy; vite preview alone does not provide it. Database-mode Clinic records and accounts persist; Registrar/default Inventory and mock-mode Clinic records reset on restart. Optional durable_mock Inventory persists; CI also verifies expired-session workspace clearing.
+
+## Forgotten-password recovery
+
+Forgot password opens an email dialog. The email must match an active account with a usable password; unknown emails show an error. The emailed link opens the new-password form and is removed from the address bar after capture. Successful reset requires a fresh login. See [Gmail configuration and API behavior](../docs/PASSWORD-RECOVERY.md).
+
+`tests/password-recovery.spec.js` requires `CLINIC_TEST_EMAIL_OUTBOX` pointing to an isolated file-backend mail directory, plus the disposable Owner credentials below. It creates and removes a disposable Staff account. Never point this browser test at a real Gmail outbox or production database.
 
 ## Validation
 

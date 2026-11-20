@@ -1,3 +1,26 @@
+# Current validation record
+
+## Current local validation — 20 November 2026
+
+Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. These changes are local and unpushed. JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.
+
+| Check | Result and scope |
+| --- | --- |
+| Full SQLite backend suite | 342 discovered: 340 passed, two PostgreSQL-only skips; test-only fast hasher, production hashing unchanged |
+| Recovery tests with configured hashing | All 18 passed |
+| Browser recovery | Passed with an isolated file outbox: unknown email error, link redemption, password validation, old-password/JWT rejection, new login and single-use link |
+| Gmail delivery | SMTP authentication and real reset submission succeeded; user confirmed email receipt and a working reset |
+| Frontend | ESLint and production build passed |
+| API contract | Runtime/static equality and Redocly lint passed; 50 paths, 77 operations, nine public and 68 protected |
+
+Recovery sends only to the saved email of an active account with a usable password. Unknown/ineligible addresses return 404; mail failures return 503. Reset links expire after 30 minutes. Successful reset revokes existing sessions and JWTs. Sender credentials are private environment configuration and are excluded from Git.
+
+The user-requested local account reset was backed up; all prior accounts and sessions were removed while clinic table counts remained unchanged. First-run registration was verified open. The user then registered a fresh Owner and confirmed recovery worked. This was local maintenance, not a new account-deletion API or a change to the rule preventing Owner self-deletion.
+
+Public deployment, real Registrar/Inventory gateway integration, and green GitHub Actions runs for this unpushed change remain unverified. Automated tests use isolated fixtures; manual Gmail delivery is separately user-confirmed. See [JWT-AUTHENTICATION.md](JWT-AUTHENTICATION.md) and [PASSWORD-RECOVERY.md](PASSWORD-RECOVERY.md).
+
+## Historical submission records
+
 > Latest verification results: [VERIFICATION-RESULTS.md](VERIFICATION-RESULTS.md). The following submission-stage figures are historical.
 
 # Current validation record

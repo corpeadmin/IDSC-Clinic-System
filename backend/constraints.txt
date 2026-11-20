@@ -1,6 +1,7 @@
 # Resolved for Python 3.13; refresh with advisory review.
 Django==6.1.2
 PyYAML==6.0.3
+PyJWT==2.15.1
 asgiref==3.12.1
 attrs==26.1.0
 django-cors-headers==4.9.0

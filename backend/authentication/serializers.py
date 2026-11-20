@@ -134,6 +134,15 @@ class AccountDeleteRequestSerializer(serializers.Serializer):
 class LoginResponseSerializer(serializers.Serializer):
     message = serializers.CharField(read_only=True)
     user = SessionUserSerializer(read_only=True)
+    access_token = serializers.CharField(read_only=True)
+    token_type = serializers.CharField(read_only=True)
+    expires_in = serializers.IntegerField(read_only=True)
+
+
+class AccessTokenSerializer(serializers.Serializer):
+    access_token = serializers.CharField(read_only=True)
+    token_type = serializers.CharField(read_only=True)
+    expires_in = serializers.IntegerField(read_only=True)
 
 
 class MessageResponseSerializer(serializers.Serializer):

@@ -1,3 +1,5 @@
+> Latest local JWT and Gmail recovery results (20 November 2026): [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md). The stage records below are historical.
+
 # Integration validation — 17 October 2026
 
 > Historical stage-by-stage evidence. Counts and branch names below describe the stage when recorded, not the current submission. Latest scope/results: [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md). Current setup: [SETUP.md](../SETUP.md).

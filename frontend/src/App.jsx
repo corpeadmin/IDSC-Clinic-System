@@ -3,9 +3,10 @@ import {
   UsernameChangeDialog,
 } from "./CredentialDialogs";
 import OwnerRegistration from "./OwnerRegistration";
+import { ForgotPasswordDialog, ResetPasswordForm } from "./PasswordRecovery";
 import { GetStudent, RestockPanel, MockWorkspace } from "./ExternalSystems";
 import { useCallback, useEffect, useEffectEvent, useState } from "react";
-import { request, listAll } from "./api";
+import { request, listAll, clearAccessToken } from "./api";
 import {
   Icon,
   Logo,
@@ -16,6 +17,17 @@ import {
   Modal,
   Field,
 } from "./ClinicUI";
+function readResetLink() {
+  const prefix = "#reset-password?";
+  if (!window.location.hash.startsWith(prefix)) return null;
+  const params = new URLSearchParams(window.location.hash.slice(prefix.length));
+  return {
+    uid: params.get("uid") || "",
+    token: params.get("token") || "",
+    navigationKey: crypto.randomUUID(),
+  };
+}
+
 const date = (value, time = false) =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Manila",
@@ -83,6 +95,29 @@ export default function App() {
     <ThemeToggle dark={dark} onToggle={() => setDark((value) => !value)} />
   );
   const [session, setSession] = useState(null);
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [resetLink, setResetLink] = useState(readResetLink);
+  const resetNavigation = useEffectEvent(() => {
+    const link = readResetLink();
+    if (link) {
+      clearSession();
+      setForgotPassword(false);
+      setResetLink(link);
+    }
+  });
+  useEffect(() => {
+    const listener = () => resetNavigation();
+    window.addEventListener("hashchange", listener);
+    return () => window.removeEventListener("hashchange", listener);
+  }, []);
+  useEffect(() => {
+    if (resetLink)
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+  }, [resetLink]);
   const [students, setStudents] = useState([]);
   const [medicines, setMedicines] = useState([]);
   const [summary, setSummary] = useState({
@@ -193,6 +228,7 @@ export default function App() {
     await refreshAccounts();
   }, [refreshAccounts]);
   useEffect(() => {
+    if (resetLink) return;
     let active = true;
     request("/api/auth/setup/")
       .then((status) => {
@@ -220,7 +256,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [refresh]);
+  }, [refresh, resetLink]);
   const refreshExternal = useCallback(async () => {
     const [ss, mm, nn, rr] = await Promise.all([
       listAll("students"),
@@ -272,6 +308,7 @@ export default function App() {
     return () => window.removeEventListener("clinic-session-expired", listener);
   }, []);
   function clearSession() {
+    clearAccessToken();
     setPasswordOpen(false);
     setUsernameOpen(false);
     setAdmins([]);
@@ -446,6 +483,23 @@ export default function App() {
     currentStaffPage * 10,
   );
   const adminLimitReached = admins.length >= 5;
+  if (resetLink)
+    return (
+      <div className="login-page">
+        <div className="login-theme">{themeToggle}</div>
+        <div className="login-form-wrap">
+          <ResetPasswordForm
+            key={resetLink.navigationKey}
+            link={resetLink}
+            onBack={() => {
+              clearAccessToken();
+              setLoggedIn(false);
+              setResetLink(null);
+            }}
+          />
+        </div>
+      </div>
+    );
   if (!loggedIn && ownerSetup === null)
     return (
       <div className="login-page">
@@ -509,7 +563,7 @@ export default function App() {
               setLoginError("");
               setBusy(true);
               try {
-                const data = await request("/api/auth/login/", "POST", {
+                const data = await request("/api/v1/auth/login/", "POST", {
                   username: credentials.get("email"),
                   password: credentials.get("password"),
                 });
@@ -534,7 +588,11 @@ export default function App() {
             <Field label="Username" name="email" required />
             <Field label="Password" name="password" type="password" required />
             <div className="login-forgot-row">
-              <button className="text-link" type="button" disabled>
+              <button
+                className="text-link"
+                type="button"
+                onClick={() => setForgotPassword(true)}
+              >
                 Forgot password?
               </button>
             </div>
@@ -548,6 +606,9 @@ export default function App() {
             </Button>
           </form>
         </div>
+        {forgotPassword && (
+          <ForgotPasswordDialog onClose={() => setForgotPassword(false)} />
+        )}
       </div>
     );
   return (

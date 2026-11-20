@@ -1,7 +1,7 @@
 name: Clinic quality
 on:
   push:
-    branches: ['improvement/**']
+    branches: ['improvement/**', 'integration/**', 'submission/**']
   pull_request:
     branches: [main, 'improvement/**']
   workflow_dispatch:
@@ -210,7 +210,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture: [workflows, limits, first-owner, accessibility]
+        fixture: [workflows, limits, first-owner, accessibility, password-recovery]
     env:
       DB_NAME: browser.sqlite3
       CLINIC_DATA_BACKEND: mock
@@ -218,6 +218,10 @@ jobs:
       CLINIC_TEST_FIRST_RUN: ${{ matrix.fixture == 'first-owner' && '1' || '0' }}
       CLINIC_TEST_LIMITS: ${{ matrix.fixture == 'limits' && '1' || '0' }}
       CLINIC_TEST_BASE_URL: http://127.0.0.1:5173
+      EMAIL_BACKEND: django.core.mail.backends.filebased.EmailBackend
+      EMAIL_FILE_PATH: ${{ github.workspace }}/.runtime/reset-emails
+      CLINIC_TEST_EMAIL_OUTBOX: ${{ github.workspace }}/.runtime/reset-emails
+      PASSWORD_RESET_FRONTEND_URL: http://127.0.0.1:5173
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -241,10 +245,11 @@ jobs:
           FIXTURE: ${{ matrix.fixture }}
         run: |
           case "$FIXTURE" in
-            workflows) npx playwright test clinic.spec.js password-change.spec.js account-management.spec.js account-lifecycle.spec.js role-hierarchy.spec.js external-workflows.spec.js mock-catalog.spec.js ;;
+            workflows) npx playwright test clinic.spec.js password-change.spec.js account-management.spec.js account-lifecycle.spec.js role-hierarchy.spec.js external-workflows.spec.js mock-catalog.spec.js jwt.spec.js ;;
             limits) npx playwright test account-limits.spec.js ;;
             first-owner) npx playwright test owner-registration.spec.js ;;
             accessibility) npx playwright test accessibility.spec.js modal-focus.spec.js session-expiry.spec.js ;;
+            password-recovery) npx playwright test password-recovery.spec.js ;;
           esac
       - name: Safe failure diagnostics
         if: failure()

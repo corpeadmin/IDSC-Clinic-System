@@ -1,5 +1,9 @@
 # IDSC Clinic Management System
 
+Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; Gmail delivery and reset were confirmed by the user on 20 November 2026. Each installation requires its own private sender configuration. Unknown emails show an error.
+
+Current final-requirements work: [JWT authentication](docs/JWT-AUTHENTICATION.md). Website login now issues a JWT and protected browser calls send Bearer credentials. Legacy sessions remain compatible. Exact health route: `/health`; versioned login: `/api/v1/auth/login/`.
+
 School final project: a React/Vite clinic website connected to a Django API, with Owner/Admin/Staff accounts and mock Registrar/Inventory workspaces.
 
 Verification pass: [latest results](docs/VERIFICATION-RESULTS.md),
@@ -8,7 +12,7 @@ Verification pass: [latest results](docs/VERIFICATION-RESULTS.md),
 [security review](docs/VERIFICATION-SECURITY.md). Optional durable mock stock
 survives restarts; no real external connectivity is claimed.
 
-Current branch: [improvement/clinic-final-verification](https://github.com/microwaveTuesday/IDSC-Clinic-System-Clean/tree/improvement/clinic-final-verification). Branch selection history: [CONSOLIDATION-AUDIT.md](docs/CONSOLIDATION-AUDIT.md). Use a reviewed PR for changes to main.
+Current local work branch: `integration/final-jwt` (unpushed). Latest local evidence: [CURRENT-VALIDATION.md](docs/CURRENT-VALIDATION.md). Earlier verification branch: `improvement/clinic-final-verification`. Branch selection history: [CONSOLIDATION-AUDIT.md](docs/CONSOLIDATION-AUDIT.md). Use a reviewed PR for changes to main.
 
 ## Run in VS Code
 
@@ -106,7 +110,7 @@ Real Registrar/Inventory adapters are not implemented. Adding a URL alone cannot
 | Static contract | [openapi.yaml](openapi.yaml) |
 | Runtime schema | http://127.0.0.1:8002/api/schema/ |
 | Swagger / ReDoc | http://127.0.0.1:8002/docs and /api/schema/redoc/ |
-| OpenAPI 3.1.0 inventory | 45 paths; 72 operations; 5 public; 67 protected |
+| OpenAPI 3.1.0 inventory | 50 paths; 77 operations; 9 public; 68 protected |
 | Health | GET /api/v1/health returns exactly {"status":"ok"} |
 
 Public operations: health, CSRF acquisition, login, setup status and first-Owner registration. Registration only works before setup. Login/registration still require CSRF. Other operations require a session and appropriate role. Unsafe requests use X-CSRFToken; the frontend includes cookies and obtains fresh tokens before writes.

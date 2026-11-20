@@ -1,7 +1,7 @@
 {$CLINIC_HOST:localhost} {
     tls internal
     encode gzip
-    @backend path /api/* /admin/* /docs /docs/
+    @backend path /api/* /admin/* /docs /docs/ /health
     handle @backend {
         reverse_proxy backend:8000
     }

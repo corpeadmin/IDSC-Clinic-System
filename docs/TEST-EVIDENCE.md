@@ -1,3 +1,5 @@
+> Latest local JWT and Gmail recovery results (20 November 2026): [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md). The stage records below are historical.
+
 > Verification branch evidence is in [VERIFICATION-RESULTS.md](VERIFICATION-RESULTS.md); figures below remain historical stage records.
 
 ﻿# Phase 7 — Tests & Contract Validation Evidence

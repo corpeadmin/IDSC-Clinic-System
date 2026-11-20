@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateAPIView
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -41,8 +41,11 @@ from .serializers import (
     SessionUserSerializer,
     StaffCreateSerializer,
     ManagedAccountUpdateSerializer,
+    AccessTokenSerializer,
 )
 from .account_lifecycle import change_account_access
+from .jwt_auth import issue_access
+from .authentication import ClinicSessionAuthentication
 
 
 @extend_schema(
@@ -68,9 +71,7 @@ def csrf_token(request):
 @csrf_protect
 @throttle_classes([LoginThrottle])
 def login_view(request):
-    """
-    Authenticate a user and create a Django session.
-    """
+    """Authenticate credentials, create a revocable login and issue an access JWT."""
     username = request.data.get("username")
     password = request.data.get("password")
 
@@ -99,6 +100,7 @@ def login_view(request):
         {
             "message": "Login successful.",
             "user": SessionUserSerializer(user).data,
+            **issue_access(request, user),
         },
         status=status.HTTP_200_OK,
     )
@@ -114,6 +116,10 @@ def logout_view(request):
     """
     Log out the current authenticated user and destroy the session.
     """
+    from .models import AccessGrant
+    if isinstance(request.auth, AccessGrant):
+        from django.contrib.sessions.models import Session
+        Session.objects.filter(session_key=request.auth.session_key).delete()
     logout(request)
 
     return Response(
@@ -439,8 +445,28 @@ def owner_register(request):
         ) from exc
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     response = Response(
-        {"message": "Owner account created.", "user": SessionUserSerializer(user).data},
+        {
+            "message": "Owner account created.",
+            "user": SessionUserSerializer(user).data,
+            **issue_access(request, user),
+        },
         status=201,
     )
     response["Cache-Control"] = "no-store"
     return response
+
+
+@extend_schema(
+    request=None,
+    responses=AccessTokenSerializer,
+    description=(
+        "Mint a short-lived JWT from a valid browser session. Session-only and "
+        "CSRF protected; accepts no refresh token. Used after reload, expiry or "
+        "password rotation."
+    ),
+)
+@api_view(["POST"])
+@authentication_classes([ClinicSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def access_token_view(request):
+    return Response(issue_access(request, request.user))

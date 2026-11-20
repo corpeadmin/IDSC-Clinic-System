@@ -1,29 +1,40 @@
 # Clinic backend API reference
 
-Verification branch: improvement/clinic-final-verification. Login input now
+Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; real Gmail delivery requires an owned sender and private App Password.
+
+Current final-requirements work: [JWT authentication](docs/JWT-AUTHENTICATION.md). Website login now issues a JWT and protected browser calls send Bearer credentials. Legacy sessions remain compatible. Exact health route: `/health`; versioned login: `/api/v1/auth/login/`.
+
+Historical verification branch: improvement/clinic-final-verification. Login input now
 enforces documented types/lengths. Durable mock Inventory mutations require an
 Idempotency-Key; uncertain prior outcomes return503, conflicting or expired
 replays return409. Replay body retention defaults to24 hours. See
 [INVENTORY-RECOVERY.md](docs/INVENTORY-RECOVERY.md) and
-[VERIFICATION-SECURITY.md](docs/VERIFICATION-SECURITY.md). Routes remain45 paths /
-72 operations; the runtime/committed schemas are compared structurally in CI.
+[VERIFICATION-SECURITY.md](docs/VERIFICATION-SECURITY.md). Routes now include50 paths /
+77 operations; the runtime/committed schemas are compared structurally in CI.
 
-Current branch: improvement/clinic-final-verification. Canonical machine-readable contract: [openapi.yaml](openapi.yaml). Runtime schema: `/api/schema/`; Swagger: `/docs`; ReDoc: `/api/schema/redoc/`. Development backend: http://127.0.0.1:8002.
+Current local branch: integration/final-jwt (unpushed). Canonical machine-readable contract: [openapi.yaml](openapi.yaml). Runtime schema: `/api/schema/`; Swagger: `/docs`; ReDoc: `/api/schema/redoc/`. Development backend: http://127.0.0.1:8002.
 
-OpenAPI 3.1.0: **45 paths, 72 operations, 5 public, 67 protected**. The table below includes every canonical operation; compatibility aliases are excluded.
+OpenAPI 3.1.0: **50 paths, 77 operations, 9 public, 68 protected**. The table below includes every canonical operation; compatibility aliases are excluded.
 
 ## Authentication and access
 
-Use Django sessions through ClinicSessionAuthentication. GET `/api/auth/csrf/` supplies a csrfToken and cookie. POST login with username/password and X-CSRFToken; retain session cookies. Fetch a fresh CSRF token before unsafe requests, including after login/registration rotation. Public POST operations also require CSRF.
+JWT bearer authentication is checked first; Django sessions through ClinicSessionAuthentication remain compatible. See the JWT guide above for browser token renewal and revocation. GET `/api/auth/csrf/` supplies a csrfToken and cookie. POST login with username/password and X-CSRFToken; retain session cookies. Fetch a fresh CSRF token before unsafe requests, including after login/registration rotation. Public POST operations also require CSRF.
 
 GET `/api/auth/setup/` returns only `owner_registration_available`, with no-store caching. POST `/api/auth/owner/register/` accepts username/password/confirm_password and optional first_name/last_name/email. Success returns 201 with user and starts a session. Completed or competing setup returns 409. Registration cannot reopen after logout, deactivation or an out-of-band Owner role change. See [OWNER-REGISTRATION.md](docs/OWNER-REGISTRATION.md).
 
 Owner is the single superuser; CLINIC_ADMIN manages Staff only; CLINIC_STAFF uses clinic features. Only Owner manages Admins and operates mock external workspaces. Django is_staff is not a clinic role. Signed-in accounts without a clinic role cannot access clinic features. Faculty/Student Portal projections require authentication and expose status only.
 
+Password recovery sends only to an email already saved on an active account with a usable password. An unknown or ineligible email returns 404 with a visible error. Mail-service failure returns 503; 200 means the transport accepted the reset message. Reset confirmation validates a single-use, 30-minute link and revokes existing sessions and JWTs.
+
 ## Complete operation inventory
 
 | Method | Path | Required access |
 | --- | --- | --- |
+| POST | `/api/auth/password/reset/` | Public; CSRF; rate limited |
+| POST | `/api/auth/password/reset/confirm/` | Public; CSRF; rate limited |
+| GET | `/health` | Public |
+| POST | `/api/v1/auth/login/` | Public; CSRF |
+| POST | `/api/auth/token/` | Session only; CSRF |
 | GET | `/api/auth/csrf/` | Public; CSRF for POST |
 | POST | `/api/auth/login/` | Public; CSRF for POST |
 | POST | `/api/auth/logout/` | Authenticated |

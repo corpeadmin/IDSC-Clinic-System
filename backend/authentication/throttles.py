@@ -18,3 +18,13 @@ class LoginThrottle(SimpleRateThrottle):
         if not settings.LOGIN_THROTTLE_ENABLED:
             return True
         return super().allow_request(request, view)
+
+
+class PasswordResetThrottle(SimpleRateThrottle):
+    scope = "password-reset"
+    rate = "10/hour"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {
+            "scope": self.scope, "ident": self.get_ident(request),
+        }

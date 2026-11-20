@@ -24,7 +24,8 @@ paths:
   /api/auth/login/:
     post:
       operationId: auth_login_create
-      description: Authenticate a user and create a Django session.
+      description: Authenticate credentials, create a revocable login and issue an
+        access JWT.
       tags:
       - auth
       requestBody:
@@ -55,6 +56,7 @@ paths:
       tags:
       - auth
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -71,6 +73,7 @@ paths:
       tags:
       - auth
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -134,6 +137,7 @@ paths:
               $ref: '#/components/schemas/PasswordChangeRequestRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -142,6 +146,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
           description: ''
+  /api/auth/password/reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: Send an expiring reset link only to the address saved on an active,
+        recoverable account. Unknown/inactive/unusable addresses return 404. CSRF
+        and rate limits apply.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+        '404':
+          description: No eligible account uses this email address.
+        '503':
+          description: Reset email service unavailable.
+      summary: Email a password-reset link
+  /api/auth/password/reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Redeem a valid reset link once. Applies password validators, revokes
+        all account sessions/JWTs, and requires login afterward. CSRF and rate limits
+        apply.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+      summary: Reset a forgotten password
   /api/auth/setup/:
     get:
       operationId: auth_setup_retrieve
@@ -158,6 +224,24 @@ paths:
                 $ref: '#/components/schemas/OwnerSetupStatus'
           description: ''
       summary: Check first Owner registration availability
+  /api/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: Mint a short-lived JWT from a valid browser session. Session-only
+        and CSRF protected; accepts no refresh token. Used after reload, expiry or
+        password rotation.
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+          description: ''
+      summary: Issue a JWT from the current browser session
   /api/auth/username/change/:
     post:
       operationId: auth_username_change_create
@@ -180,6 +264,7 @@ paths:
               $ref: '#/components/schemas/UsernameChangeRequestRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -194,6 +279,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -225,6 +311,7 @@ paths:
               $ref: '#/components/schemas/AdminCreateRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -249,6 +336,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -280,6 +368,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -311,6 +400,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -331,6 +421,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -348,6 +439,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -369,6 +461,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -378,6 +471,48 @@ paths:
                 $ref: '#/components/schemas/AdminAccount'
           description: ''
       summary: Deactivate Clinic administrator
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      description: Authenticate credentials, create a revocable login and issue an
+        access JWT.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Log in and issue a JWT
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
   /api/v1/consultations/:
     get:
       operationId: v1_consultations_list
@@ -398,6 +533,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -425,6 +561,7 @@ paths:
               $ref: '#/components/schemas/ConsultationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -463,6 +600,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -523,6 +661,7 @@ paths:
               $ref: '#/components/schemas/ConsultationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -585,6 +724,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedConsultationRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -636,6 +776,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -650,6 +791,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -694,6 +836,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -721,6 +864,7 @@ paths:
               $ref: '#/components/schemas/HealthRecordRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -759,6 +903,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -819,6 +964,7 @@ paths:
               $ref: '#/components/schemas/HealthRecordRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -881,6 +1027,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedHealthRecordRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -932,6 +1079,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -960,6 +1108,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -987,6 +1136,7 @@ paths:
               $ref: '#/components/schemas/HealthStatusRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1025,6 +1175,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1085,6 +1236,7 @@ paths:
               $ref: '#/components/schemas/HealthStatusRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1147,6 +1299,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedHealthStatusRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1198,6 +1351,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1224,6 +1378,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1251,6 +1406,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1266,6 +1422,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1294,6 +1451,7 @@ paths:
               $ref: '#/components/schemas/NotificationReadRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1333,6 +1491,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1360,6 +1519,7 @@ paths:
               $ref: '#/components/schemas/MedicineDispensationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1401,6 +1561,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1433,6 +1594,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1481,6 +1643,7 @@ paths:
               $ref: '#/components/schemas/MedicineDispensationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1502,6 +1665,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1523,6 +1687,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1538,6 +1703,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1566,6 +1732,7 @@ paths:
               $ref: '#/components/schemas/MedicineWriteRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1625,6 +1792,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedMedicineWriteRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1661,6 +1829,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -1694,6 +1863,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1715,6 +1885,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1743,6 +1914,7 @@ paths:
               $ref: '#/components/schemas/StudentWriteRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1799,6 +1971,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStudentWriteRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1817,6 +1990,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1832,6 +2006,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1847,6 +2022,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1862,6 +2038,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1877,6 +2054,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1905,6 +2083,7 @@ paths:
               $ref: '#/components/schemas/RestockWriteRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -1937,6 +2116,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1958,6 +2138,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -1985,6 +2166,7 @@ paths:
               $ref: '#/components/schemas/StudentLookupRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2029,6 +2211,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2055,6 +2238,7 @@ paths:
               $ref: '#/components/schemas/StaffCreateRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '201':
@@ -2076,6 +2260,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2107,6 +2292,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2138,6 +2324,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2158,6 +2345,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '204':
@@ -2175,6 +2363,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2196,6 +2385,7 @@ paths:
       tags:
       - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
       responses:
         '200':
@@ -2205,8 +2395,39 @@ paths:
                 $ref: '#/components/schemas/ClinicUser'
           description: ''
       summary: Deactivate Clinic staff account
+  /health:
+    get:
+      operationId: root_health_check
+      description: Basic Clinic API health endpoint.
+      tags:
+      - health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+          description: ''
+      summary: Check Clinic API health
+      security: []
 components:
   schemas:
+    AccessToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          readOnly: true
+        token_type:
+          type: string
+          readOnly: true
+        expires_in:
+          type: integer
+          readOnly: true
+      required:
+      - access_token
+      - expires_in
+      - token_type
     AdminAccount:
       type: object
       properties:
@@ -2700,8 +2921,20 @@ components:
           allOf:
           - $ref: '#/components/schemas/SessionUser'
           readOnly: true
+        access_token:
+          type: string
+          readOnly: true
+        token_type:
+          type: string
+          readOnly: true
+        expires_in:
+          type: integer
+          readOnly: true
       required:
+      - access_token
+      - expires_in
       - message
+      - token_type
       - user
     ManagedAccountUpdateRequest:
       type: object
@@ -3469,6 +3702,43 @@ components:
       - occurred_at
       - reference_id
       - student_id
+    ResetConfirmRequest:
+      type: object
+      properties:
+        uid:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        confirm_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - confirm_password
+      - new_password
+      - token
+      - uid
+    ResetRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+      required:
+      - email
     RestockItemRequest:
       type: object
       properties:
@@ -3759,6 +4029,12 @@ components:
       - current_password
       - new_username
   securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived revocable JWT from login or the CSRF-protected session
+        token endpoint. Current database roles remain authoritative.
     cookieAuth:
       type: apiKey
       in: cookie

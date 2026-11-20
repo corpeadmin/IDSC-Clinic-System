@@ -46,6 +46,30 @@ test("password validation, retained session, and new-password login", async ({
     await expect(dialog.getByText(/This password is too common/)).toBeVisible();
     await next.fill(replacement);
     await confirm.fill(replacement);
+    // Release an obsolete background-token rejection only after password rotation.
+    // This must not sign the successfully rotated browser session out.
+    const rotated = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/auth/password/change/") &&
+        response.status() === 200,
+    );
+    let backgroundStarted;
+    const started = new Promise((resolve) => {
+      backgroundStarted = resolve;
+    });
+    await page.route(
+      "**/api/v1/inventory-notifications/",
+      async (route) => {
+        backgroundStarted();
+        await rotated;
+        await route.fulfill({
+          status: 401,
+          json: { detail: "Obsolete access token." },
+        });
+      },
+      { times: 1 },
+    );
+    await started;
     await submit.click();
     await expect(dialog).toBeHidden();
     await expect(

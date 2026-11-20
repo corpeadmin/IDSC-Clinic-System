@@ -12,6 +12,15 @@ from drf_spectacular.extensions import (
 )
 
 
+class ClinicJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = "authentication.jwt_auth.ClinicJWTAuthentication"
+    name = "bearerAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT",
+                "description": "Short-lived revocable JWT from login or the CSRF-protected session token endpoint. Current database roles remain authoritative."}
+
+
 class ClinicSessionAuthenticationScheme(
     OpenApiAuthenticationExtension
 ):

@@ -40,10 +40,21 @@ def api_root_view(request):
     )
 
 
-from authentication.views import AdminListCreateView, AdminDetailView, AdminAccessView
+from authentication.views import AdminListCreateView, AdminDetailView, AdminAccessView, login_view
+from clinic.views import HealthView
+from clinic.serializers import HealthCheckSerializer
+from drf_spectacular.utils import extend_schema
+
+
+class RootHealthView(HealthView):
+    @extend_schema(operation_id="root_health_check", responses=HealthCheckSerializer)
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 urlpatterns = [
+    path("health", RootHealthView.as_view(), name="root-health"),
+    path("api/v1/auth/login/", login_view, name="jwt-login"),
     path("admin/", admin.site.urls),
 
     # Authentication remains outside the versioned business namespace.

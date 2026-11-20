@@ -1,4 +1,5 @@
 from django.urls import path
+from .password_reset import request_password_reset, confirm_password_reset
 
 from .views import (
     csrf_token,
@@ -9,10 +10,14 @@ from .views import (
     me_view,
     password_change_view,
     username_change_view,
+    access_token_view,
 )
 
 
 urlpatterns = [
+    path("password/reset/", request_password_reset, name="password-reset"),
+    path("password/reset/confirm/", confirm_password_reset, name="password-reset-confirm"),
+    path("token/", access_token_view, name="access-token"),
     path("setup/", owner_setup_status, name="owner-setup-status"),
     path("owner/register/", owner_register, name="owner-register"),
     path("csrf/", csrf_token, name="csrf-token"),

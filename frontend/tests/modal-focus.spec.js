@@ -23,6 +23,11 @@ test("password typing retains focus across refresh; keyboard close uses current 
     let data = [];
     if (path === "/api/auth/setup/")
       data = { owner_registration_available: false };
+    if (path === "/api/auth/token/")
+      data = {
+        access_token: "intercepted-browser-test-token",
+        expires_in: 900,
+      };
     if (path === "/api/auth/me/")
       data = {
         id: 999,

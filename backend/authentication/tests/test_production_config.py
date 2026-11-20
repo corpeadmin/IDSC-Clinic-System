@@ -6,7 +6,8 @@ from django.test import SimpleTestCase
 class ProductionConfigurationTests(SimpleTestCase):
     def run_config(self, **overrides):
         env = os.environ.copy()
-        env.update({"DEBUG": "False", "ALLOWED_HOSTS": "clinic.school.test"})
+        env.update({"DEBUG": "False", "ALLOWED_HOSTS": "clinic.school.test",
+                    "PASSWORD_RESET_FRONTEND_URL": "https://clinic.school.test"})
         env.pop("SECRET_KEY", None)
         env.update(overrides)
         return subprocess.run(

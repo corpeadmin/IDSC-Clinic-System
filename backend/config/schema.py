@@ -21,6 +21,11 @@ HTTP_METHODS = {
 
 
 OPERATION_SUMMARIES = {
+    ("POST", "/api/auth/password/reset/"): "Email a password-reset link",
+    ("POST", "/api/auth/password/reset/confirm/"): "Reset a forgotten password",
+    ("POST", "/api/auth/token/"): "Issue a JWT from the current browser session",
+    ("POST", "/api/v1/auth/login/"): "Log in and issue a JWT",
+    ("GET", "/health"): "Check Clinic API health",
     ("GET", "/api/auth/setup/"): "Check first Owner registration availability",
     ("POST", "/api/auth/owner/register/"): "Register the first and only Owner",
     ("POST", "/api/v1/students/import/"): "Get student by Registrar ID",
@@ -152,6 +157,10 @@ OPERATION_SUMMARIES = {
 
 
 PUBLIC_OPERATIONS = {
+    ("POST", "/api/auth/password/reset/"),
+    ("POST", "/api/auth/password/reset/confirm/"),
+    ("POST", "/api/v1/auth/login/"),
+    ("GET", "/health"),
     ("GET", "/api/auth/setup/"),
     ("POST", "/api/auth/owner/register/"),
     ("GET", "/api/v1/health"),
