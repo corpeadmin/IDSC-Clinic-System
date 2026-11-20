@@ -2,7 +2,7 @@
 
 ## Current local validation — 20 November 2026
 
-Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. These changes are local and unpushed. JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.
+Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. Implementation commit `2267508` is published to `corpeadmin/IDSC-Clinic-System` on this branch. GitHub Actions verification is in progress. JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.
 
 | Check | Result and scope |
 | --- | --- |
@@ -17,7 +17,7 @@ Recovery sends only to the saved email of an active account with a usable passwo
 
 The user-requested local account reset was backed up; all prior accounts and sessions were removed while clinic table counts remained unchanged. First-run registration was verified open. The user then registered a fresh Owner and confirmed recovery worked. This was local maintenance, not a new account-deletion API or a change to the rule preventing Owner self-deletion.
 
-Public deployment, real Registrar/Inventory gateway integration, and green GitHub Actions runs for this unpushed change remain unverified. Automated tests use isolated fixtures; manual Gmail delivery is separately user-confirmed. See [JWT-AUTHENTICATION.md](JWT-AUTHENTICATION.md) and [PASSWORD-RECOVERY.md](PASSWORD-RECOVERY.md).
+Public deployment, real Registrar/Inventory gateway integration, and green GitHub Actions runs for this branch remain unverified until the current checks complete. Automated tests use isolated fixtures; manual Gmail delivery is separately user-confirmed. See [JWT-AUTHENTICATION.md](JWT-AUTHENTICATION.md) and [PASSWORD-RECOVERY.md](PASSWORD-RECOVERY.md).
 
 ## Historical submission records
 

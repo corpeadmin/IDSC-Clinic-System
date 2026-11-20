@@ -28,7 +28,7 @@ Install updated requirements and apply authentication migration 0003_accessgrant
 
 The JWT-only stage added 48 paths and 75 operations, including the versioned login alias, session-token endpoint and exact `/health` route. That stage had seven public and 68 protected operations. The subsequent recovery feature brings the current contract to 50 paths/77 operations (nine public, 68 protected); see PASSWORD-RECOVERY.md. Existing `/api/v1/health` remains unchanged. Swagger advertises bearerAuth alongside cookieAuth; token renewal advertises cookieAuth only. Copy the login access_token into Swagger Authorize to demonstrate a protected call.
 
-No live provider integration, hosted site, production deployment or successful GitHub run of this unpushed change is claimed. The workflow now includes integration/submission branch pushes and the JWT browser regression. Public deployment after tests on main remains separate work.
+No live provider integration, hosted site, production deployment or successful GitHub run of these changes at the time of the local validation is claimed. The workflow now includes integration/submission branch pushes and the JWT browser regression. Public deployment after tests on main remains separate work.
 
 ## Verification
 

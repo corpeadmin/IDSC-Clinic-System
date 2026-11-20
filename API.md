@@ -12,7 +12,7 @@ replays return409. Replay body retention defaults to24 hours. See
 [VERIFICATION-SECURITY.md](docs/VERIFICATION-SECURITY.md). Routes now include50 paths /
 77 operations; the runtime/committed schemas are compared structurally in CI.
 
-Current local branch: integration/final-jwt (unpushed). Canonical machine-readable contract: [openapi.yaml](openapi.yaml). Runtime schema: `/api/schema/`; Swagger: `/docs`; ReDoc: `/api/schema/redoc/`. Development backend: http://127.0.0.1:8002.
+Current local branch: integration/final-jwt (published to corpeadmin/IDSC-Clinic-System). Canonical machine-readable contract: [openapi.yaml](openapi.yaml). Runtime schema: `/api/schema/`; Swagger: `/docs`; ReDoc: `/api/schema/redoc/`. Development backend: http://127.0.0.1:8002.
 
 OpenAPI 3.1.0: **50 paths, 77 operations, 9 public, 68 protected**. The table below includes every canonical operation; compatibility aliases are excluded.
 
