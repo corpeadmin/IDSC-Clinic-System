@@ -55,9 +55,18 @@ jobs:
       - name: Match backup clients to PostgreSQL 16 service
         if: matrix.database == 'postgres'
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client-16
-          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          mkdir -p "$RUNNER_TEMP/pg16"
+          for tool in pg_dump pg_restore; do
+            cat > "$RUNNER_TEMP/pg16/$tool" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm --network host --env PGPASSWORD --volume /tmp:/tmp postgres:16 "$(basename "$0")" "$@"
+          SCRIPT
+            chmod +x "$RUNNER_TEMP/pg16/$tool"
+          done
+          echo "$RUNNER_TEMP/pg16" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/pg16/pg_dump" --version
+          "$RUNNER_TEMP/pg16/pg_restore" --version
       - name: Django system checks
         run: python backend/manage.py check
       - name: Migration drift
