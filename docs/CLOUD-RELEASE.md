@@ -16,8 +16,8 @@ Use the Connect dashboard's PostgreSQL session pooler (IPv4-compatible, port 543
 
 ## Configure the Render backend
 
-- Repository: `https://github.com/corpeadmin/IDSC-Clinic-System`.
-- Initial staging branch: `integration/final-jwt`; production branch becomes `main` only after a reviewed merge.
+- Repository: `https://github.com/microwaveTuesday/IDSC-Clinic-System` (transferred from corpeadmin on 21 November 2026).
+- Initial staging branch was `integration/final-jwt`; PR #4 is now merged and Render targets `main`, with Auto-Deploy Off.
 - Runtime: Docker; Dockerfile: `deploy/Dockerfile.backend`; build context: repository root.
 - Compute: Free; one worker/instance. Health-check path: `/api/auth/setup/` (checks the account database).
 - Set private environment values from [cloud.env.example](../deploy/cloud.env.example). Replace example domains with the actual Render and stable Vercel domains.
@@ -73,4 +73,4 @@ For Inventory mutations also obtain idempotency-key rules, stable transaction ID
 
 ## Current release handoff
 
-Temporary INITIAL_OWNER_* variables were removed from Render and a configuration restart retained the existing Owner. Exact non-secret production targets and administrator steps are in [RELEASE-HANDOFF.md](RELEASE-HANDOFF.md). The connected account currently has push access, without repository administrator access.
+Temporary INITIAL_OWNER_* variables were removed from Render and a configuration restart retained the existing Owner. Exact non-secret production targets and administrator steps are in [RELEASE-HANDOFF.md](RELEASE-HANDOFF.md). The repository has since transferred to microwaveTuesday, which now has administrator access. The production environment and target variables are configured; deployment secrets and the first main release remain pending.
