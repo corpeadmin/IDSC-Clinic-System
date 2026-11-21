@@ -70,3 +70,7 @@ The staged checks do not prove authenticated browser writes, inbox delivery, pro
 The minimum genuine provider call can be Registrar student lookup through the agreed gateway. Obtain the actual gateway HTTPS origin, OpenAPI/versioned lookup path, server-side authentication method, a synthetic test student ID, response examples and mappings for ACTIVE/GRADUATED/DROPPED_OUT, timeout/offline behavior and the other group's agreement contact. Record the agreement before implementing the adapter. No provider URL or contract is invented here.
 
 For Inventory mutations also obtain idempotency-key rules, stable transaction IDs, stock-unit semantics, request/delivery state transitions and transaction-status lookup for uncertain outcomes. Keep mock and real ledgers separate. See [REAL-SYSTEM-INTEGRATION.md](REAL-SYSTEM-INTEGRATION.md). No real Registrar/Inventory call is implemented by this deployment preparation.
+
+## Current release handoff
+
+Temporary INITIAL_OWNER_* variables were removed from Render and a configuration restart retained the existing Owner. Exact non-secret production targets and administrator steps are in [RELEASE-HANDOFF.md](RELEASE-HANDOFF.md). The connected account currently has push access, without repository administrator access.

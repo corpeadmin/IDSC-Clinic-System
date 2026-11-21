@@ -13,7 +13,9 @@ Deployed tested commit `4645e34` from `integration/final-jwt` after [all 12 qual
 - Hosted password-reset request returned 200 through Brevo. The user confirmed inbox receipt and that the link opens the hosted reset form. Completed password reset remains unverified; the test request did not change the password.
 - The smoke checker now accepts both HTML and API response types, avoiding a false 406 on Swagger. No backend contract change.
 
-Remaining: remove INITIAL_OWNER_* hosting bootstrap values after verified login; configure protected production CI variables/secrets with the repository administrator and validate a real push-to-main release; verify completed hosted reset redemption and database restart persistence; implement one agreed real provider gateway call. Registrar/Inventory are still process-local mocks on this free profile. Free backend cold starts remain possible.
+Bootstrap cleanup: INITIAL_OWNER_USERNAME, INITIAL_OWNER_PASSWORD and INITIAL_OWNER_EMAIL were removed from Render. Configuration restart `dep-dc0i5rs0916s73bqlte0` reached Live on the same code commit. Startup reported the existing Owner unchanged, and public smoke plus Owner login passed after restart. This verifies account persistence; no new clinic-record persistence claim is made. Both follow-up commits `72e24b0` and `5d98ff0` also passed CI.
+
+Remaining: configure protected production CI variables/secrets with the repository administrator and validate a real push-to-main release; verify completed hosted reset redemption and database restart persistence; implement one agreed real provider gateway call. Registrar/Inventory are still process-local mocks on this free profile. Free backend cold starts remain possible.
 
 ## Cloud preparation - 21 November 2026
 
