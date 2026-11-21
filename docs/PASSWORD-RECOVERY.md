@@ -4,6 +4,10 @@ The login page now has an active Forgot password button. It opens an email dialo
 
 Sender and recipient are different settings: the sender is the Gmail account authorized to send system notifications; the recipient is the email saved on the Clinic user's account. A sender does not need to be that user's Gmail. Valid non-Gmail recovery addresses also work. Unknown, inactive or unusable accounts return HTTP 404 with a visible email-not-found message. The sender address is never automatically assigned as a recovery recipient.
 
+## Cloud email delivery
+
+The Render Free deployment uses `authentication.email_backends.BrevoEmailBackend` over HTTPS because SMTP ports are blocked there. Configure a verified sender and private `BREVO_API_KEY`; endpoint behavior, registered recipients and token safeguards are unchanged. Gmail SMTP remains available locally. Brevo transport and failure handling are covered by automated tests; real Brevo inbox delivery is pending. See [CLOUD-RELEASE.md](CLOUD-RELEASE.md).
+
 ## Configure a sender you own
 
 Use a Gmail account controlled by the group, preferably a dedicated Clinic notifications account. For a short school demonstration, an existing member's account may be used with their agreement. An invented address or one owned by somebody else cannot send these messages.

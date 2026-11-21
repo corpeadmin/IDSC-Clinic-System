@@ -1,5 +1,7 @@
 # IDSC Clinic Management System
 
+Cloud deployment preparation: [hosted release setup](docs/CLOUD-RELEASE.md). The free-hosting path uses HTTPS email delivery; live hosting verification is still pending.
+
 Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; Gmail delivery and reset were confirmed by the user on 20 November 2026. Each installation requires its own private sender configuration. Unknown emails show an error.
 
 Current final-requirements work: [JWT authentication](docs/JWT-AUTHENTICATION.md). Website login now issues a JWT and protected browser calls send Bearer credentials. Legacy sessions remain compatible. Exact health route: `/health`; versioned login: `/api/v1/auth/login/`.

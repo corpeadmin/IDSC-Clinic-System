@@ -1,6 +1,6 @@
 # Cloud deployment plan
 
-Status: proposed. The existing container deployment was verified separately; this cloud setup has not been deployed or tested.
+Status: cloud preparation implemented; hosted deployment is not yet verified. Follow [CLOUD-RELEASE.md](CLOUD-RELEASE.md) for the current free-hosting/email choice, private Owner provisioning and test-gated release workflow. The details below describe the earlier proposed topology.
 
 | Layer | Platform | Responsibility |
 | --- | --- | --- |

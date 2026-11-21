@@ -71,6 +71,11 @@ MIDDLEWARE = [
     "clinic.middleware.ClinicResponseMiddleware",
 ]
 
+# Hosted Python services can serve collected admin assets without a separate proxy.
+# Container staging keeps its existing Caddy static-file handler by default.
+if os.environ.get("SERVE_STATIC", "False").lower() in ("true", "1", "yes"):
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -192,6 +197,15 @@ else:
             "PORT": DB_PORT,
         }
     }
+    db_sslmode = os.environ.get("DB_SSLMODE", "")
+    if db_sslmode:
+        if db_sslmode not in ("disable", "allow", "prefer", "require", "verify-ca", "verify-full"):
+            raise ImproperlyConfigured("DB_SSLMODE is not a valid PostgreSQL TLS mode.")
+        DATABASES["default"]["OPTIONS"] = {"sslmode": db_sslmode}
+        if os.environ.get("DB_SSLROOTCERT"):
+            DATABASES["default"]["OPTIONS"]["sslrootcert"] = os.environ["DB_SSLROOTCERT"]
+    elif os.environ.get("DB_SSLROOTCERT"):
+        raise ImproperlyConfigured("Set DB_SSLMODE=verify-full when providing DB_SSLROOTCERT.")
 
 
 # Password validation
@@ -448,8 +462,12 @@ if reset_mail_backend == "django.core.mail.backends.smtp.EmailBackend":
     }
 elif reset_mail_backend == "django.core.mail.backends.filebased.EmailBackend":
     reset_mail_options = {"file_path": os.environ.get("EMAIL_FILE_PATH", str(BASE_DIR.parent / ".runtime" / "reset-emails"))}
+elif reset_mail_backend == "authentication.email_backends.BrevoEmailBackend":
+    reset_mail_options = {"api_key": os.environ.get("BREVO_API_KEY", ""), "timeout": 10}
 MAILERS = {"default": {"BACKEND": reset_mail_backend, "OPTIONS": reset_mail_options}}
 PASSWORD_RESET_EMAIL_CONFIGURED = (
     reset_mail_backend != "django.core.mail.backends.smtp.EmailBackend"
     or bool(reset_mail_options.get("host") and reset_mail_options.get("username") and reset_mail_options.get("password"))
 )
+if reset_mail_backend == "authentication.email_backends.BrevoEmailBackend":
+    PASSWORD_RESET_EMAIL_CONFIGURED = bool(reset_mail_options["api_key"] and DEFAULT_FROM_EMAIL)

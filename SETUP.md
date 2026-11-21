@@ -1,5 +1,7 @@
 # Run the clinic project in VS Code
 
+For hosted Vercel/Render/Supabase setup and the CI release gate, see [CLOUD-RELEASE.md](docs/CLOUD-RELEASE.md). Use private hosting environment values from deploy/cloud.env.example; keep local Gmail SMTP configuration separate.
+
 For the working Forgot password form and Gmail sender configuration, see [PASSWORD-RECOVERY.md](docs/PASSWORD-RECOVERY.md). Local Gmail delivery and reset were user-confirmed on 20 November 2026; a fresh installation still needs its own private sender configuration. An unconfigured local file outbox is not Gmail delivery.
 
 JWT update: install the updated backend requirements and run migrations before starting the application. The website uses memory-held bearer tokens with CSRF-protected session renewal; [authentication details](docs/JWT-AUTHENTICATION.md). Existing accounts are retained.

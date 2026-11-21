@@ -37,6 +37,7 @@ newman-results.json
 .validation-regression.log
 
 .runtime/
+.vercel/
 
 .development-secret
 *.dump

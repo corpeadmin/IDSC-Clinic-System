@@ -165,6 +165,22 @@ class PasswordResetTests(TestCase):
                 self.assertNotIn("private provider detail", response.content.decode())
 
     @override_settings(MAILERS={"default": {
+        "BACKEND": "authentication.email_backends.BrevoEmailBackend",
+        "OPTIONS": {"api_key": "synthetic-private-api-key"},
+    }})
+    def test_https_backend_sends_to_registered_recipient_and_reports_provider_outage(self):
+        with patch("authentication.email_backends.BrevoEmailBackend._request", return_value=(201, {"messageId": "synthetic-message"})) as provider:
+            response = self.post(REQUEST, {"email": self.staff.email})
+            self.assertEqual(response.status_code, 200)
+            payload = provider.call_args.args[1]
+            self.assertEqual(payload["to"], [{"email": self.staff.email}])
+            self.assertIn("https://clinic.example.test/#reset-password?", payload["textContent"])
+        with patch("authentication.email_backends.BrevoEmailBackend._request", side_effect=OSError("private-provider-detail")):
+            response = self.post(REQUEST, {"email": self.staff.email})
+            self.assertEqual(response.status_code, 503)
+            self.assertNotIn("private-provider-detail", response.content.decode())
+
+    @override_settings(MAILERS={"default": {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
         "OPTIONS": {"host": "smtp.gmail.com", "port": 587,
                     "username": "synthetic-sender@example.test",

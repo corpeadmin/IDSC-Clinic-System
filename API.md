@@ -1,5 +1,7 @@
 # Clinic backend API reference
 
+Cloud password-recovery delivery can use Brevo HTTPS through a server-side email backend. Request/confirm endpoint contracts and role rules are unchanged. See [CLOUD-RELEASE.md](docs/CLOUD-RELEASE.md).
+
 Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; real Gmail delivery requires an owned sender and private App Password.
 
 Current final-requirements work: [JWT authentication](docs/JWT-AUTHENTICATION.md). Website login now issues a JWT and protected browser calls send Bearer credentials. Legacy sessions remain compatible. Exact health route: `/health`; versioned login: `/api/v1/auth/login/`.

@@ -1,7 +1,7 @@
 name: Clinic quality
 on:
   push:
-    branches: ['improvement/**', 'integration/**', 'submission/**']
+    branches: [main, 'improvement/**', 'integration/**', 'submission/**']
   pull_request:
     branches: [main, 'improvement/**']
   workflow_dispatch:
@@ -126,6 +126,8 @@ jobs:
         run: python backend/manage.py spectacular --validate --fail-on-warn --file /tmp/dynamic.yaml
       - name: Static versus runtime contract equality
         run: python scripts/check_contract.py
+      - name: Cloud release guards and frontend packaging
+        run: python -m unittest discover -s scripts/tests -v
       - name: Static and dynamic Redocly lint
         run: |
           npx --yes @redocly/cli@2.7.0 lint openapi.yaml
@@ -269,3 +271,89 @@ jobs:
       - name: Safe failure diagnostics
         if: failure()
         run: tail -n 60 /tmp/backend.log /tmp/frontend.log || true
+  release:
+    name: Publish tested production commit
+    needs: [backend, contracts, frontend, dependencies, deployment, newman, browser]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CLINIC_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.CLINIC_PUBLIC_ORIGIN }}
+    env:
+      RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      CLINIC_BACKEND_ORIGIN: ${{ vars.CLINIC_BACKEND_ORIGIN }}
+      CLINIC_PUBLIC_ORIGIN: ${{ vars.CLINIC_PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - name: Validate production target variables
+        run: |
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, 'scripts')
+          from prepare_cloud_frontend import https_origin
+          for name in ('RENDER_SERVICE_ID', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID'):
+              if not os.environ.get(name):
+                  raise SystemExit('Missing production variable: ' + name)
+          for name in ('CLINIC_BACKEND_ORIGIN', 'CLINIC_PUBLIC_ORIGIN'):
+              https_origin(os.environ.get(name, ''))
+          PY
+      - name: Install pinned deployment CLI
+        run: npm install --global vercel@66.6.0
+      - name: Build static frontend without production credentials
+        run: |
+          npm ci --prefix frontend
+          npm --prefix frontend run build
+          python scripts/prepare_cloud_frontend.py
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('.vercel/project.json').write_text(json.dumps({
+              'orgId': os.environ['VERCEL_ORG_ID'],
+              'projectId': os.environ['VERCEL_PROJECT_ID'],
+          }))
+          PY
+      - name: Deploy exact backend revision and wait for live status
+        run: python scripts/deploy_render.py
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      - name: Stage production frontend without assigning domains
+        id: stage
+        run: |
+          vercel deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/vercel-release.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.parse import urlsplit
+          data = json.loads((Path(os.environ['RUNNER_TEMP']) / 'vercel-release.json').read_text())
+          value = data.get('deployment', data).get('url', '')
+          if value and not value.startswith('https://'):
+              value = 'https://' + value
+          url = urlsplit(value)
+          if url.scheme != 'https' or not url.hostname or not url.hostname.endswith('.vercel.app') or url.path or url.query or url.fragment or url.username or url.password:
+              raise SystemExit('Vercel did not return a valid staging URL.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('url=' + value + '\n')
+          PY
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Check staged frontend and same-origin backend
+        run: python scripts/check_public_deployment.py
+        env:
+          CLINIC_PUBLIC_ORIGIN: ${{ steps.stage.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Promote tested frontend
+        run: vercel promote "$STAGED_ORIGIN" --yes
+        env:
+          STAGED_ORIGIN: ${{ steps.stage.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Check public production website
+        run: python scripts/check_public_deployment.py
