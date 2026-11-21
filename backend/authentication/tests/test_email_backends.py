@@ -78,5 +78,5 @@ class BrevoDeliveryTests(SimpleTestCase):
         with patch("authentication.email_backends.BrevoEmailBackend._request", return_value=(200, {})) as request:
             output = StringIO()
             call_command("check_reset_email", stdout=output)
-            request.assert_called_once_with("account")
+            request.assert_called_once_with("smtp/statistics/aggregatedReport?days=1")
             self.assertIn("No message was sent", output.getvalue())

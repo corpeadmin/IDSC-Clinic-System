@@ -45,3 +45,5 @@ newman-results.json
 *.sqlite3-shm
 *.backup
 quality-summary.json
+.env.*
+!.env.example

@@ -55,7 +55,8 @@ class BrevoEmailBackend(BaseEmailBackend):
             raise EmailDeliveryError("Email provider request failed.") from None
 
     def check_connection(self):
-        status, _ = self._request("account")
+        # Keep diagnostics within the restricted transactional-email scope.
+        status, _ = self._request("smtp/statistics/aggregatedReport?days=1")
         if status != 200:
             raise EmailDeliveryError("Email provider authentication failed.")
 

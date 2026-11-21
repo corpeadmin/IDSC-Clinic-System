@@ -34,7 +34,7 @@ Create a Brevo Free account, activate transactional sending and verify an addres
 
 Brevo currently offers 300 messages/day on Free. With a free-address sender such as Gmail, Brevo may replace the sender address with a compliant provider address; recipients may therefore see a different From address. Domain authentication is preferable when an owned domain is available. Account activation/sender approval and inbox placement must be verified. [Plans](https://help.brevo.com/hc/en-us/articles/208589409-About-Brevo-s-pricing-plans), [sender requirements](https://help.brevo.com/hc/en-us/articles/14925263522578-Comply-with-Gmail-Yahoo-and-Microsoft-s-requirements-for-email-senders)
 
-`python manage.py check_reset_email` checks API authentication without sending mail. Provider errors return the existing 503 response; unknown Clinic emails still return 404. The API key, reset links, email bodies and recipient addresses are not printed. Sending uses verified HTTPS, fixed provider URLs, a timeout and no redirects or automatic retries.
+`python manage.py check_reset_email` checks a read-only transactional statistics endpoint without sending mail, so its diagnostic does not require account-wide permissions. Use a Restricted Brevo key with Transactional email set to All (Read cannot send), leaving unrelated services at None. Provider errors return the existing 503 response; unknown Clinic emails still return 404. The API key, reset links, email bodies and recipient addresses are not printed. Sending uses verified HTTPS, fixed provider URLs, a timeout and no redirects or automatic retries.
 
 ## Configure Vercel and GitHub deployment
 
