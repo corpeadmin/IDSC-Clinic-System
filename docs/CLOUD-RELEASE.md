@@ -61,7 +61,7 @@ Release sequence:
 3. `scripts/deploy_render.py` checks the target repository, main branch and disabled auto-deploy, requests the exact tested SHA, and waits for that same SHA to be live. It stops on failure or timeout.
 4. Pinned Vercel CLI stages the prebuilt frontend without assigning production domains.
 5. Read-only HTTPS smoke checks verify the frontend, health, database-backed setup, closed Owner registration, no-store API, OpenAPI, Swagger and protected dashboard.
-6. Promote the staged frontend and rerun checks against the stable public origin.
+6. Promote the exact checked production deployment through the project-scoped REST API, verify the stable public domain is assigned to that exact deployment, and rerun checks against the stable public origin. The API avoids CLI account-profile lookups that project-scoped tokens cannot satisfy.
 
 The staged checks do not prove authenticated browser writes, inbox delivery, provider integration or a database restart. Run those separately on the final public origin before submission. Code rollback does not undo migrations; back up the database before releases. If a backend update succeeds and frontend publication fails, investigate compatible rollback before retrying. [Render exact-commit deploys](https://api-docs.render.com/reference/create-deploy), [Vercel Build Output](https://vercel.com/docs/build-output-api), [Vercel CLI](https://vercel.com/docs/cli/deploy)
 

@@ -331,13 +331,17 @@ jobs:
       - name: Stage production frontend without assigning domains
         id: stage
         run: |
-          vercel deploy --prebuilt --prod --skip-domain --yes --json --scope "$VERCEL_ORG_ID" --project "$VERCEL_PROJECT_ID" > "$RUNNER_TEMP/vercel-release.json"
+          vercel deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/vercel-release.json"
           python - <<'PY'
-          import json, os
+          import json, os, re
           from pathlib import Path
           from urllib.parse import urlsplit
           data = json.loads((Path(os.environ['RUNNER_TEMP']) / 'vercel-release.json').read_text())
-          value = data.get('deployment', data).get('url', '')
+          deployment = data.get('deployment', data)
+          deployment_id = deployment.get('id', '')
+          if not re.fullmatch(r'dpl_[A-Za-z0-9]+', deployment_id):
+              raise SystemExit('Vercel did not return a valid staged deployment ID.')
+          value = deployment.get('url', '')
           if value and not value.startswith('https://'):
               value = 'https://' + value
           url = urlsplit(value)
@@ -345,6 +349,7 @@ jobs:
               raise SystemExit('Vercel did not return a valid staging URL.')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('url=' + value + '\n')
+              output.write('deployment_id=' + deployment_id + '\n')
           PY
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -354,9 +359,10 @@ jobs:
           CLINIC_PUBLIC_ORIGIN: ${{ steps.stage.outputs.url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promote tested frontend
-        run: vercel promote "$STAGED_ORIGIN" --yes --scope "$VERCEL_ORG_ID"
+        run: python scripts/promote_vercel.py
         env:
           STAGED_ORIGIN: ${{ steps.stage.outputs.url }}
+          STAGED_DEPLOYMENT_ID: ${{ steps.stage.outputs.deployment_id }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       - name: Check public production website
         run: python scripts/check_public_deployment.py

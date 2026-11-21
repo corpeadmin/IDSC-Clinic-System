@@ -1,5 +1,13 @@
 # Current validation record
 
+## Project-token promotion follow-up - 21 November 2026
+
+The second gated run for 55ef629 (44890616421) passed all 12 quality jobs and deployed the exact backend revision, but explicit CLI scope caused staging to fail during user-profile lookup. No production frontend promotion occurred. The previous scope-only diagnosis was insufficient.
+
+The follow-up restores the staging invocation that already succeeded with the project-scoped token and uses Vercel's documented project-specific promotion API. It verifies the configured team owns the project, the staged deployment ID/project/URL match, and the deployment is READY for production before one promotion request. It then waits for the stable public domain to appear as a direct alias of that exact deployment. No user-profile lookup, wider token, protection disablement or manual promotion is substituted for a successful workflow. Synthetic tests cover wrong targets, preview/unready deployments, unsafe URLs and uncertain outcomes. A fresh gated release must prove the fix.
+
+Provider documentation: https://vercel.com/docs/rest-api/projects/point-production-traffic-to-a-given-deployment and https://vercel.com/docs/rest-api/projects/find-a-project-by-id-or-name.
+
 ## First gated main release diagnostic - 21 November 2026
 
 All three production secret names were verified without reading their values, and CLINIC_DEPLOY_ENABLED was enabled. PR #5 merged as dbdfbb4. All 12 quality jobs passed in [main run 44875708009](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44875708009), then the operator approved the production environment.
