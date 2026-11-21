@@ -8,7 +8,7 @@ from scripts.prepare_cloud_frontend import https_origin, prepare
 
 
 SHA = "a" * 40
-REPO = "corpeadmin/IDSC-Clinic-System"
+REPO = "microwaveTuesday/IDSC-Clinic-System"
 
 
 class RenderReleaseTests(unittest.TestCase):

@@ -1,5 +1,13 @@
 # Current validation record
 
+## Ownership and release configuration - 21 November 2026
+
+GitHub verified the transfer to microwaveTuesday/IDSC-Clinic-System with administrator permissions. PR #4 was merged by the repository operator into main at 23cf46c; [main quality CI passed](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44869516541), with the release job skipped. The local legacy remote now uses the new URL; origin remains the separate Clean repository. Historical evidence below preserves the original repository names and commit references.
+
+Render's existing service now targets the transferred repository and main branch. Docker and deploy/Dockerfile.backend are preserved; Auto-Deploy is Off. GitHub production is created with main-only branch policy, microwaveTuesday as required reviewer and administrator bypass disabled. All five non-secret hosting variables are saved. Production deployment secrets and the enable flag remain pending; no successful main release is claimed.
+
+The other groups' Registrar and Inventory systems are reported unfinished. Integration inputs remain documented; mocks are not evidence of a real gateway call.
+
 ## Public cloud deployment - 21 November 2026
 
 Deployed tested commit `4645e34` from `integration/final-jwt` after [all 12 quality jobs passed](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44865005481). Render service `srv-dc0hvj3m8hqs73ej4cd0` reports Live; Vercel deployment `dpl_HFU5vLRHPy1tvWnHgaSuRyoARcTS` was staged, checked, then promoted. This was a manual initial release; main is unchanged and the production Actions job has not run.
