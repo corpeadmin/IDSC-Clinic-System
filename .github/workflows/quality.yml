@@ -331,7 +331,7 @@ jobs:
       - name: Stage production frontend without assigning domains
         id: stage
         run: |
-          vercel deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/vercel-release.json"
+          vercel deploy --prebuilt --prod --skip-domain --yes --json --scope "$VERCEL_ORG_ID" --project "$VERCEL_PROJECT_ID" > "$RUNNER_TEMP/vercel-release.json"
           python - <<'PY'
           import json, os
           from pathlib import Path
@@ -354,7 +354,7 @@ jobs:
           CLINIC_PUBLIC_ORIGIN: ${{ steps.stage.outputs.url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - name: Promote tested frontend
-        run: vercel promote "$STAGED_ORIGIN" --yes
+        run: vercel promote "$STAGED_ORIGIN" --yes --scope "$VERCEL_ORG_ID"
         env:
           STAGED_ORIGIN: ${{ steps.stage.outputs.url }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

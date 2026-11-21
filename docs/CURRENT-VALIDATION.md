@@ -1,5 +1,11 @@
 # Current validation record
 
+## First gated main release diagnostic - 21 November 2026
+
+All three production secret names were verified without reading their values, and CLINIC_DEPLOY_ENABLED was enabled. PR #5 merged as dbdfbb4. All 12 quality jobs passed in [main run 44875708009](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44875708009), then the operator approved the production environment.
+
+The release authenticated to Render and deployed exact commit dbdfbb4 (deployment dep-dc0m6rrm8hqs73ev7ll0). Frontend staging and same-origin checks passed. Promotion failed with Vercel CLI User not found (404), and the final public check was skipped. This run is not a successful full release. The workflow follow-up explicitly supplies the verified Vercel team ID for both staging and promotion, and the project ID for staging. A fresh gated main run must prove the fix; no manual promotion is substituted for that evidence.
+
 ## Ownership and release configuration - 21 November 2026
 
 GitHub verified the transfer to microwaveTuesday/IDSC-Clinic-System with administrator permissions. PR #4 was merged by the repository operator into main at 23cf46c; [main quality CI passed](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44869516541), with the release job skipped. The local legacy remote now uses the new URL; origin remains the separate Clean repository. Historical evidence below preserves the original repository names and commit references.
