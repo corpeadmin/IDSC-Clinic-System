@@ -10,10 +10,10 @@ Deployed tested commit `4645e34` from `integration/final-jwt` after [all 12 qual
 - Supabase password authentication and certificate/hostname verification passed. Render completed Django migrations and provisioned the first Owner before listening.
 - Public frontend, same-origin health, database-backed setup, no-store API, schema and Swagger passed. Anonymous dashboard returns 401; Owner login and JWT dashboard return 200. Public registration is closed.
 - Collected Django admin CSS returns 200 directly from Render. Browser visibly shows the public Clinic login page.
-- Hosted password-reset request returned 200 through Brevo. Inbox receipt and link redemption await user confirmation; this request did not change the password.
+- Hosted password-reset request returned 200 through Brevo. The user confirmed inbox receipt and that the link opens the hosted reset form. Completed password reset remains unverified; the test request did not change the password.
 - The smoke checker now accepts both HTML and API response types, avoiding a false 406 on Swagger. No backend contract change.
 
-Remaining: remove INITIAL_OWNER_* hosting bootstrap values after verified login; configure protected production CI variables/secrets with the repository administrator and validate a real push-to-main release; verify hosted reset redemption and database restart persistence; implement one agreed real provider gateway call. Registrar/Inventory are still process-local mocks on this free profile. Free backend cold starts remain possible.
+Remaining: remove INITIAL_OWNER_* hosting bootstrap values after verified login; configure protected production CI variables/secrets with the repository administrator and validate a real push-to-main release; verify completed hosted reset redemption and database restart persistence; implement one agreed real provider gateway call. Registrar/Inventory are still process-local mocks on this free profile. Free backend cold starts remain possible.
 
 ## Cloud preparation - 21 November 2026
 

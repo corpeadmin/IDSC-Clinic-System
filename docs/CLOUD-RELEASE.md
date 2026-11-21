@@ -4,7 +4,7 @@ Deployed 21 November 2026 from tested commit `4645e34` on `integration/final-jwt
 
 ## Chosen school-demo topology
 
-Browser -> Vercel same-origin routes -> Render Free Docker backend -> Supabase PostgreSQL. Password reset uses Brevo's HTTPS transactional API. Gmail SMTP remains available locally and was previously inbox-tested. The verified Brevo sender accepted a real reset request from the hosted API (HTTP 200); recipient inbox receipt and hosted reset redemption still await user confirmation.
+Browser -> Vercel same-origin routes -> Render Free Docker backend -> Supabase PostgreSQL. Password reset uses Brevo's HTTPS transactional API. Gmail SMTP remains available locally and was previously inbox-tested. The verified Brevo sender accepted a real reset request from the hosted API (HTTP 200); the user confirmed inbox receipt and that the hosted reset form opens. Completed hosted password reset remains unverified.
 
 Render Free blocks outbound SMTP on 465/587, has an ephemeral filesystem, and sleeps after 15 minutes of inactivity. Cold starts can take about a minute. Do not put Clinic data or a durable mock Inventory ledger on its local disk. This profile persists Clinic records/accounts in PostgreSQL; Registrar and Inventory remain explicitly process-local mocks. Run one instance/worker. Free hosting is suitable for the synthetic school demo; immediate availability and institutional production operation are not established. See [Render limits](https://render.com/docs/free).
 

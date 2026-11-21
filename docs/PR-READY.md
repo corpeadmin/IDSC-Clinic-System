@@ -4,7 +4,7 @@ Login issues revocable JWTs while preserving session compatibility. Recovery val
 
 The cloud profile serves the frontend on Vercel, the Docker API on Render Free and persistent Clinic data on Supabase PostgreSQL. Brevo HTTPS supports recovery without SMTP. Startup provisions the first Owner before public serving, certificate verification stays enabled, and a test-gated main release workflow is prepared.
 
-Validation: all 12 quality jobs passed for deployed code commit `4645e34`, including both databases, container, browser, Postman and contract checks. Staged and public frontend/API checks passed; hosted Owner login and JWT dashboard passed. Brevo accepted a hosted reset email; inbox receipt/redemption await user confirmation. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
+Validation: all 12 quality jobs passed for deployed code commit `4645e34`, including both databases, container, browser, Postman and contract checks. Staged and public frontend/API checks passed; hosted Owner login and JWT dashboard passed. Brevo accepted a hosted reset email; the user confirmed inbox receipt and that its link opens the hosted reset form. Completed hosted reset remains unverified. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
 
 Live demo: https://idsc-clinic-management.vercel.app. The initial release was manual after CI; main is unchanged. Production environment configuration and an actual main release remain pending, along with a real provider gateway call. Hosted Registrar/Inventory remain process-local mocks; free backend cold starts apply. No credentials or recovery links are included.
 
