@@ -8,11 +8,11 @@ The initial manual release used tested commit 4645e34. The database uses certifi
 
 ## Current repository and release setup
 
-The repository is now https://github.com/microwaveTuesday/IDSC-Clinic-System. Ownership transfer is verified: microwaveTuesday has administrator access. PR #4 was merged as 23cf46c and its main quality run passed; production release was skipped because deployment is not enabled.
+The repository is now https://github.com/microwaveTuesday/IDSC-Clinic-System. Ownership transfer is verified: microwaveTuesday has administrator access. The current deployed main commit is f43769b. Its complete automated release passed all 13 jobs; see [RELEASE-EVIDENCE.md](RELEASE-EVIDENCE.md).
 
-The production environment now requires microwaveTuesday review, restricts deployment to the main branch, and disallows administrator bypass. Prevent self-review stays off so the sole configured operator can approve their own release. All five variables below are saved. Deployment secrets are not yet configured; enter them directly in GitHub, never through chat. Render source is updated to the transferred repository and main branch, while Docker, the existing Dockerfile path and Auto-Deploy Off are preserved.
+The production environment now requires microwaveTuesday review, restricts deployment to the main branch, and disallows administrator bypass. Prevent self-review stays off so the sole configured operator can approve their own release. All five variables below are saved. All three deployment secret names were verified without reading their values; the complete release authenticated successfully. Enter future credential rotations directly in GitHub, never through chat. Render source is updated to the transferred repository and main branch, while Docker, the existing Dockerfile path and Auto-Deploy Off are preserved.
 
-1. Review the ownership/release follow-up PR and its CI before merging. PR #4 is already merged; do not recreate it or change main directly.
+1. For future changes, review the PR and its CI before merging. PRs #4 through #7 are already merged; do not recreate them or change main directly.
 2. Keep the configured production protection rules: main only, required owner review and no administrator bypass.
 3. Keep these configured production environment variables:
 
@@ -24,10 +24,10 @@ The production environment now requires microwaveTuesday review, restricts deplo
 | CLINIC_BACKEND_ORIGIN | https://idsc-clinic-api.onrender.com |
 | CLINIC_PUBLIC_ORIGIN | https://idsc-clinic-management.vercel.app |
 
-4. Enter environment secrets privately: RENDER_API_KEY, VERCEL_TOKEN and VERCEL_AUTOMATION_BYPASS_SECRET for protected staged deployment checks. Use the appropriate hosting account and intended project permissions. Vercel CLI created a project automation bypass during staging verification; do not create unrelated access or expose its value. Database credentials, SECRET_KEY and BREVO_API_KEY remain in Render, not GitHub variables or the frontend.
+4. Maintain the configured environment secrets privately: RENDER_API_KEY, VERCEL_TOKEN and VERCEL_AUTOMATION_BYPASS_SECRET for protected staged deployment checks. Use the appropriate hosting account and intended project permissions. Vercel CLI created a project automation bypass during staging verification; do not create unrelated access or expose its value. Database credentials, SECRET_KEY and BREVO_API_KEY remain in Render, not GitHub variables or the frontend.
 5. Keep Render Auto-Deploy Off, the source at microwaveTuesday/IDSC-Clinic-System, and the branch at main. These are already configured. The release script verifies them before requesting a deployment.
-6. Set the repository variable CLINIC_DEPLOY_ENABLED=true only after those settings are checked, then merge the reviewed PR. The push to main must finish all quality jobs before release starts. Approve the exact commit if the production environment requires review.
-7. Confirm the release job deploys that exact main SHA on Render, stages the Vercel frontend, passes staging checks, promotes it and passes public checks. Record the successful Actions URL. Until that actually happens, automated deployment on push to main is prepared but unverified.
+6. CLINIC_DEPLOY_ENABLED=true is configured. Keep it enabled only while the verified production targets and credentials remain valid, then merge reviewed changes through PRs. The push to main must finish all quality jobs before release starts. Approve the exact commit if the production environment requires review.
+7. Confirm the release job deploys that exact main SHA on Render, stages the Vercel frontend, passes staging checks, promotes it and passes public checks. Record the successful Actions URL. This sequence succeeded for f43769b in run 44891807127. Future commits require their own successful checks and production approval.
 
 See CLOUD-RELEASE.md for configuration, cold-start limits and rollback cautions. Removing bootstrap settings did not delete or reset the Owner account. Do not re-import an old private env file without removing INITIAL_OWNER_* first.
 
