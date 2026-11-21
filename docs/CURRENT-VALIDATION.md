@@ -1,5 +1,15 @@
 # Current validation record
 
+## Cloud preparation - 21 November 2026
+
+The free-hosting profile, Brevo HTTPS mail transport, hosted Owner provisioning, PostgreSQL TLS settings, optional static middleware, frontend routing package and test-gated release job are prepared. See [CLOUD-RELEASE.md](CLOUD-RELEASE.md). The public website and real Brevo inbox delivery are not yet verified.
+
+Local validation: 356 backend tests discovered with the test-only fast hasher; 354 passed and two PostgreSQL-only tests skipped. Sixteen focused configuration/Owner/email-backend tests passed with configured hashing. Eight deployment guard/packaging tests passed. Frontend lint/build, migration drift and static/runtime contract equality passed; 50 paths/77 operations unchanged. Collected admin CSS was served successfully by the hosted static middleware.
+
+All 12 quality jobs subsequently passed for `7d13037`, including PostgreSQL and the actual container smoke: [CI run](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44862660702). The production-release job was correctly skipped on the integration branch. The restricted-key diagnostic follow-up has a separate CI run.
+
+A dedicated Free Supabase project in Singapore and the Vercel Hobby project `idsc-clinic-management` were provisioned. Its readable domain is reserved but has no deployment yet. Database TLS certificate/hostname verification passed using the official Supabase CA; database password authentication and migrations remain pending. Render remains a Free-plan draft. The Brevo sender was visibly Verified; the private API key and actual delivery still require configuration/testing. No credentials are recorded here. Main is unchanged.
+
 ## Current local validation — 20 November 2026
 
 Work branch: `integration/final-jwt`, based on `submission/clinic-final-v2` at `ad361f1`. Implementation commit `2267508` is published to `corpeadmin/IDSC-Clinic-System` on this branch. All 12 GitHub Actions jobs passed for code commit `c6a3302`: [successful run](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44762774676). JWT login, memory-held browser tokens, revocable access grants and email-based password recovery are implemented. Existing Owner/Admin/Staff permissions remain in force.

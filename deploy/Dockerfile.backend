@@ -1,5 +1,5 @@
 FROM python:3.13-slim
-ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 STATIC_ROOT=/static SERVE_STATIC=True
 WORKDIR /app
 COPY backend/requirements*.txt backend/constraints.txt ./
 RUN pip install --no-cache-dir -r requirements-deployment.txt

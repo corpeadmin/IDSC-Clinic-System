@@ -41,7 +41,6 @@ services:
       EMAIL_USE_SSL: ${EMAIL_USE_SSL:-False}
       DEFAULT_FROM_EMAIL: ${EMAIL_HOST_USER:-clinic@localhost}
       PASSWORD_RESET_FRONTEND_URL: https://${CLINIC_HOST:-localhost}
-      STATIC_ROOT: /static
     volumes: [inventory-data:/data, static-data:/static]
     depends_on:
       postgres: {condition: service_healthy}
