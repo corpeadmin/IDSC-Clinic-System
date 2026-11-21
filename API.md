@@ -1,738 +1,153 @@
-﻿# IDSC Clinic System API Reference
-
-Interactive API documentation and comprehensive reference for the IDSC Clinic System REST backend.
+# Clinic backend API reference
+
+Cloud password-recovery delivery can use Brevo HTTPS through a server-side email backend. Request/confirm endpoint contracts and role rules are unchanged. See [CLOUD-RELEASE.md](docs/CLOUD-RELEASE.md).
+
+Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; real Gmail delivery requires an owned sender and private App Password.
+
+Current final-requirements work: [JWT authentication](docs/JWT-AUTHENTICATION.md). Website login now issues a JWT and protected browser calls send Bearer credentials. Legacy sessions remain compatible. Exact health route: `/health`; versioned login: `/api/v1/auth/login/`.
+
+Historical verification branch: improvement/clinic-final-verification. Login input now
+enforces documented types/lengths. Durable mock Inventory mutations require an
+Idempotency-Key; uncertain prior outcomes return503, conflicting or expired
+replays return409. Replay body retention defaults to24 hours. See
+[INVENTORY-RECOVERY.md](docs/INVENTORY-RECOVERY.md) and
+[VERIFICATION-SECURITY.md](docs/VERIFICATION-SECURITY.md). Routes now include50 paths /
+77 operations; the runtime/committed schemas are compared structurally in CI.
+
+Current local branch: integration/final-jwt (published to corpeadmin/IDSC-Clinic-System). Canonical machine-readable contract: [openapi.yaml](openapi.yaml). Runtime schema: `/api/schema/`; Swagger: `/docs`; ReDoc: `/api/schema/redoc/`. Development backend: http://127.0.0.1:8002.
+
+OpenAPI 3.1.0: **50 paths, 77 operations, 9 public, 68 protected**. The table below includes every canonical operation; compatibility aliases are excluded.
+
+## Authentication and access
+
+JWT bearer authentication is checked first; Django sessions through ClinicSessionAuthentication remain compatible. See the JWT guide above for browser token renewal and revocation. GET `/api/auth/csrf/` supplies a csrfToken and cookie. POST login with username/password and X-CSRFToken; retain session cookies. Fetch a fresh CSRF token before unsafe requests, including after login/registration rotation. Public POST operations also require CSRF.
+
+GET `/api/auth/setup/` returns only `owner_registration_available`, with no-store caching. POST `/api/auth/owner/register/` accepts username/password/confirm_password and optional first_name/last_name/email. Success returns 201 with user and starts a session. Completed or competing setup returns 409. Registration cannot reopen after logout, deactivation or an out-of-band Owner role change. See [OWNER-REGISTRATION.md](docs/OWNER-REGISTRATION.md).
+
+Owner is the single superuser; CLINIC_ADMIN manages Staff only; CLINIC_STAFF uses clinic features. Only Owner manages Admins and operates mock external workspaces. Django is_staff is not a clinic role. Signed-in accounts without a clinic role cannot access clinic features. Faculty/Student Portal projections require authentication and expose status only.
+
+Password recovery sends only to an email already saved on an active account with a usable password. An unknown or ineligible email returns 404 with a visible error. Mail-service failure returns 503; 200 means the transport accepted the reset message. Reset confirmation validates a single-use, 30-minute link and revokes existing sessions and JWTs.
+
+## Complete operation inventory
+
+| Method | Path | Required access |
+| --- | --- | --- |
+| POST | `/api/auth/password/reset/` | Public; CSRF; rate limited |
+| POST | `/api/auth/password/reset/confirm/` | Public; CSRF; rate limited |
+| GET | `/health` | Public |
+| POST | `/api/v1/auth/login/` | Public; CSRF |
+| POST | `/api/auth/token/` | Session only; CSRF |
+| GET | `/api/auth/csrf/` | Public; CSRF for POST |
+| POST | `/api/auth/login/` | Public; CSRF for POST |
+| POST | `/api/auth/logout/` | Authenticated |
+| POST | `/api/auth/username/change/` | Authenticated |
+| GET | `/api/v1/admins/` | Owner |
+| POST | `/api/v1/admins/` | Owner |
+| POST | `/api/auth/password/change/` | Authenticated |
+| GET | `/api/auth/me/` | Authenticated |
+| GET | `/api/v1/health` | Public; CSRF for POST |
+| GET | `/api/v1/dashboard/` | Owner, Admin, Staff |
+| GET | `/api/v1/students/` | Owner, Admin, Staff |
+| GET | `/api/v1/students/{student_id}/` | Owner, Admin, Staff |
+| GET | `/api/v1/health-records/` | Owner, Admin, Staff |
+| POST | `/api/v1/health-records/` | Owner, Admin, Staff |
+| GET | `/api/v1/health-records/{health_record_id}/` | Owner, Admin, Staff |
+| PUT | `/api/v1/health-records/{health_record_id}/` | Owner, Admin, Staff |
+| PATCH | `/api/v1/health-records/{health_record_id}/` | Owner, Admin, Staff |
+| DELETE | `/api/v1/health-records/{health_record_id}/` | Owner, Admin |
+| GET | `/api/v1/consultations/` | Owner, Admin, Staff |
+| POST | `/api/v1/consultations/` | Owner, Admin, Staff |
+| GET | `/api/v1/consultations/{consultation_id}/` | Owner, Admin, Staff |
+| PUT | `/api/v1/consultations/{consultation_id}/` | Owner, Admin, Staff |
+| PATCH | `/api/v1/consultations/{consultation_id}/` | Owner, Admin, Staff |
+| DELETE | `/api/v1/consultations/{consultation_id}/` | Owner, Admin |
+| GET | `/api/v1/health-statuses/` | Owner, Admin, Staff |
+| POST | `/api/v1/health-statuses/` | Owner, Admin, Staff |
+| GET | `/api/v1/health-statuses/{status_id}/` | Owner, Admin, Staff |
+| PUT | `/api/v1/health-statuses/{status_id}/` | Owner, Admin, Staff |
+| PATCH | `/api/v1/health-statuses/{status_id}/` | Owner, Admin, Staff |
+| DELETE | `/api/v1/health-statuses/{status_id}/` | Owner, Admin |
+| GET | `/api/v1/medicines/` | Owner, Admin, Staff |
+| GET | `/api/v1/medicines/{medicine_id}/` | Owner, Admin, Staff |
+| GET | `/api/v1/medicine-dispensations/` | Owner, Admin, Staff |
+| POST | `/api/v1/medicine-dispensations/` | Owner, Admin, Staff |
+| GET | `/api/v1/medicine-dispensations/{dispensation_id}/` | Owner, Admin, Staff |
+| DELETE | `/api/v1/medicine-dispensations/{dispensation_id}/` | Owner, Admin |
+| POST | `/api/v1/medicine-dispensations/{dispensation_id}/rollback/` | Owner, Admin, Staff |
+| GET | `/api/v1/reports/clinic-visits/` | Owner, Admin, Staff |
+| GET | `/api/v1/reports/health-records/` | Owner, Admin, Staff |
+| GET | `/api/v1/reports/medicine-inventory/` | Owner, Admin, Staff |
+| GET | `/api/v1/reports/medicine-dispensations/` | Owner, Admin, Staff |
+| GET | `/api/v1/integrations/faculty/health-status/{student_id}/` | Owner, Admin, Staff |
+| GET | `/api/v1/integrations/student-portal/health-status/{student_id}/` | Owner, Admin, Staff |
+| GET | `/api/v1/users/` | Owner, Admin |
+| POST | `/api/v1/users/` | Owner, Admin |
+| GET | `/api/v1/users/{user_id}/` | Owner, Admin |
+| PUT | `/api/v1/users/{user_id}/` | Owner, Admin |
+| PATCH | `/api/v1/users/{user_id}/` | Owner, Admin |
+| DELETE | `/api/v1/users/{user_id}/` | Owner, Admin |
+| POST | `/api/v1/users/{user_id}/activate/` | Owner, Admin |
+| POST | `/api/v1/users/{user_id}/deactivate/` | Owner, Admin |
+| DELETE | `/api/v1/admins/{user_id}/` | Owner |
+| GET | `/api/v1/admins/{user_id}/` | Owner |
+| PUT | `/api/v1/admins/{user_id}/` | Owner |
+| PATCH | `/api/v1/admins/{user_id}/` | Owner |
+| POST | `/api/v1/admins/{user_id}/deactivate/` | Owner |
+| POST | `/api/v1/admins/{user_id}/activate/` | Owner |
+| GET | `/api/v1/inventory-notifications/` | Owner, Admin, Staff |
+| POST | `/api/v1/inventory-notifications/` | Owner, Admin, Staff |
+| GET | `/api/v1/mock/inventory/medicines/` | Owner |
+| POST | `/api/v1/mock/inventory/medicines/` | Owner |
+| PATCH | `/api/v1/mock/inventory/medicines/{medicine_id}/` | Owner |
+| DELETE | `/api/v1/mock/inventory/medicines/{medicine_id}/` | Owner |
+| POST | `/api/v1/mock/inventory/restock-requests/{request_id}/fulfill/` | Owner |
+| GET | `/api/v1/mock/registrar/students/` | Owner |
+| POST | `/api/v1/mock/registrar/students/` | Owner |
+| PATCH | `/api/v1/mock/registrar/students/{student_id}/` | Owner |
+| GET | `/api/v1/restock-requests/` | Owner, Admin, Staff |
+| POST | `/api/v1/restock-requests/` | Owner, Admin, Staff |
+| POST | `/api/v1/students/import/` | Owner, Admin, Staff |
+| GET | `/api/auth/setup/` | Public; CSRF for POST |
+| POST | `/api/auth/owner/register/` | Public; CSRF for POST |
 
----
+## Credentials and account lifecycle
 
-## Table of Contents
+Password change accepts current_password/new_password/confirm_password; username change accepts current_password/new_username. Both operate only on the signed-in account. Password validation, matching confirmation and a different new password are required. Username validation trims, normalizes Unicode and checks case-insensitive duplicates. Password changes retain the current session; other sessions expire on their next request.
 
-- [Overview](#overview)
-- [Base URL](#base-url)
-- [Interactive Documentation](#interactive-documentation)
-- [Authentication & Permissions](#authentication--permissions)
-- [Standard Response & Error Format](#standard-response--error-format)
-- [Endpoints Summary](#endpoints-summary)
-- [Students API](#students-api)
-  - [1. List Students](#1-list-students)
-  - [2. Create Student](#2-create-student)
-  - [3. Retrieve Student Details](#3-retrieve-student-details)
-  - [4. Fully Update Student](#4-fully-update-student)
-  - [5. Partially Update Student](#5-partially-update-student)
-  - [6. Delete Student](#6-delete-student)
-  - [7. List Health Records for Student](#7-list-health-records-for-student)
-  - [8. Create Health Record for Student](#8-create-health-record-for-student)
-- [Health Records API](#health-records-api)
-  - [1. List Health Records](#1-list-health-records)
-  - [2. Create Health Record](#2-create-health-record)
-  - [3. Retrieve Health Record](#3-retrieve-health-record)
-  - [4. Fully Update Health Record](#4-fully-update-health-record)
-  - [5. Partially Update Health Record](#5-partially-update-health-record)
-  - [6. Delete Health Record](#6-delete-health-record)
-- [System & Discovery Endpoints](#system--discovery-endpoints)
-
----
-
-## Overview
-
-The IDSC Clinic System API provides complete CRUD functionality for managing clinic operations, student patient profiles, and medical consultation records.
-
-- **API Version:** `1.0.0`
-- **Format:** JSON (`application/json`)
-- **OpenAPI Version:** `3.0.3`
-
----
-
-## Base URL
-
-| Environment | Base URL |
-| :--- | :--- |
-| **Development** | `http://127.0.0.1:8000` or `http://localhost:8000` |
-| **API Prefix** | `/api/` |
-
----
-
-## Interactive Documentation
-
-Interactive documentation interfaces and the raw OpenAPI 3.0 schema are served directly by the backend:
-
-| Interface | URL Path | Description |
-| :--- | :--- | :--- |
-| **Swagger UI** | `/api/docs/` | Interactive API explorer to test requests directly in browser |
-| **ReDoc** | `/api/redoc/` | Clean, responsive reference documentation |
-| **OpenAPI Schema** | `/api/schema/` | Raw OpenAPI 3.0 YAML/JSON specification |
-
----
-
-## Authentication & Permissions
-
-- **Default Permission:** `AllowAny` (public access for clinic frontend client integration).
-- **Supported Schemes:** Session Authentication (`cookieAuth` via `sessionid`), HTTP Basic Authentication (`basicAuth`).
-
----
-
-## Standard Response & Error Format
-
-All API errors return standardized JSON structures processed by the backend exception handler:
-
-### Standard Error Response Format
-
-```json
-{
-  "success": false,
-  "status_code": 400,
-  "errors": {
-    "first_name": [
-      "First name cannot be blank."
-    ]
-  }
-}
-```
-
-### 404 Not Found Response
-
-```json
-{
-  "success": false,
-  "status_code": 404,
-  "errors": {
-    "detail": "The requested resource was not found."
-  }
-}
-```
-
-### 500 Internal Server Error Response
-
-```json
-{
-  "success": false,
-  "status_code": 500,
-  "errors": {
-    "detail": "An unexpected server error occurred."
-  }
-}
-```
-
----
-
-## Endpoints Summary
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/students/` | List all students with search and filtering |
-| `POST` | `/api/students/` | Register a new student |
-| `GET` | `/api/students/{student_id}/` | Retrieve student details and nested health records |
-| `PUT` | `/api/students/{student_id}/` | Update all fields of a student |
-| `PATCH` | `/api/students/{student_id}/` | Partially update fields of a student |
-| `DELETE` | `/api/students/{student_id}/` | Delete student and all associated records |
-| `GET` | `/api/students/{student_id}/health-records/` | List health records for a specific student |
-| `POST` | `/api/students/{student_id}/health-records/` | Create health record for a specific student |
-| `GET` | `/api/health-records/` | List all health records with filtering |
-| `POST` | `/api/health-records/` | Create a new health record |
-| `GET` | `/api/health-records/{health_id}/` | Retrieve details of a health record |
-| `PUT` | `/api/health-records/{health_id}/` | Update all fields of a health record |
-| `PATCH` | `/api/health-records/{health_id}/` | Partially update fields of a health record |
-| `DELETE` | `/api/health-records/{health_id}/` | Delete a health record |
-| `GET` | `/` | API discovery and health status endpoint |
-| `GET` | `/api/schema/` | OpenAPI 3.0 schema file download |
-| `GET` | `/api/docs/` | Swagger UI documentation |
-| `GET` | `/api/redoc/` | ReDoc documentation |
-
----
-
-## Students API
-
-### 1. List Students
-
-Retrieve a list of students with optional query parameter filtering.
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/students/`
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `search` | `string` | No | Search across first name, last name, course, section, or student ID |
-| `course` | `string` | No | Filter by course / program (case-insensitive exact match) |
-| `section` | `string` | No | Filter by section (case-insensitive exact match) |
-| `sex` | `string` | No | Filter by sex (`Male`, `Female`, `Other`) |
-
-#### Example Request
-
-```http
-GET /api/students/?course=BSIT&sex=Male HTTP/1.1
-Host: localhost:8000
-Accept: application/json
-```
-
-#### Response (`200 OK`)
-
-```json
-[
-  {
-    "student_id": 1,
-    "first_name": "Juan",
-    "last_name": "Dela Cruz",
-    "birth_date": "2002-05-15",
-    "sex": "Male",
-    "course": "BS Information Technology",
-    "section": "3A",
-    "contact_no": "09123456789",
-    "health_records_count": 2,
-    "created_at": "2026-08-28T10:00:00Z",
-    "updated_at": "2026-08-28T10:30:00Z"
-  }
-]
-```
-
----
-
-### 2. Create Student
-
-Register a new student in the clinic system.
-
-- **HTTP Method:** `POST`
-- **Path:** `/api/students/`
-- **Content-Type:** `application/json`
-
-#### Request Body Fields
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `first_name` | `string` (max 100) | **Yes** | Student's first name |
-| `last_name` | `string` (max 100) | **Yes** | Student's last name |
-| `course` | `string` (max 100) | **Yes** | Degree program or course (e.g., `BSIT`, `BSCS`, `BSN`) |
-| `section` | `string` (max 50) | **Yes** | Class section (e.g., `3A`, `1-1`) |
-| `birth_date` | `string` (date: `YYYY-MM-DD`) | No | Date of birth (cannot be in the future) |
-| `sex` | `string` | No | `Male`, `Female`, or `Other` |
-| `contact_no` | `string` (max 30) | No | Contact telephone or mobile number |
-
-#### Example Request
-
-```json
-{
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789"
-}
-```
-
-#### Response (`201 Created`)
-
-```json
-{
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
-  "health_records_count": 0,
-  "created_at": "2026-08-28T10:00:00Z",
-  "updated_at": "2026-08-28T10:00:00Z"
-}
-```
-
----
-
-### 3. Retrieve Student Details
-
-Retrieve complete details for a specific student, including their nested list of health records.
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/students/{student_id}/`
-
-#### Path Parameters
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `student_id` | `integer` | **Yes** | Unique auto-incrementing student identifier |
-
-#### Response (`200 OK`)
-
-```json
-{
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Information Technology",
-  "section": "3A",
-  "contact_no": "09123456789",
-  "health_records_count": 1,
-  "created_at": "2026-08-28T10:00:00Z",
-  "updated_at": "2026-08-28T10:30:00Z",
-  "health_records": [
-    {
-      "health_id": 10,
-      "student_id": 1,
-      "student_name": "Juan Dela Cruz",
-      "allergies": "Penicillin",
-      "blood_type": "O+",
-      "medical_history": "Mild Asthma",
-      "medication": "Salbutamol inhaler as needed",
-      "weight": "65.50",
-      "height": "172.00",
-      "visit": "2026-08-28T09:30:00Z",
-      "consultation": "Patient reported mild shortness of breath after physical education. Administered nebulization.",
-      "created_at": "2026-08-28T09:35:00Z",
-      "updated_at": "2026-08-28T09:35:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 4. Fully Update Student
-
-Replace all writable fields of an existing student.
-
-- **HTTP Method:** `PUT`
-- **Path:** `/api/students/{student_id}/`
-- **Content-Type:** `application/json`
-
-#### Example Request
-
-```json
-{
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4A",
-  "contact_no": "09123456780"
-}
-```
-
-#### Response (`200 OK`)
-
-```json
-{
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4A",
-  "contact_no": "09123456780",
-  "health_records_count": 1,
-  "created_at": "2026-08-28T10:00:00Z",
-  "updated_at": "2026-08-28T11:00:00Z"
-}
-```
-
----
-
-### 5. Partially Update Student
-
-Update one or more fields of an existing student.
-
-- **HTTP Method:** `PATCH`
-- **Path:** `/api/students/{student_id}/`
-- **Content-Type:** `application/json`
-
-#### Example Request
-
-```json
-{
-  "section": "4B",
-  "contact_no": "09991112233"
-}
-```
-
-#### Response (`200 OK`)
-
-```json
-{
-  "student_id": 1,
-  "first_name": "Juan",
-  "last_name": "Dela Cruz",
-  "birth_date": "2002-05-15",
-  "sex": "Male",
-  "course": "BS Computer Science",
-  "section": "4B",
-  "contact_no": "09991112233",
-  "health_records_count": 1,
-  "created_at": "2026-08-28T10:00:00Z",
-  "updated_at": "2026-08-28T11:15:00Z"
-}
-```
-
----
-
-### 6. Delete Student
-
-Delete an existing student. Deleting a student cascades and removes all associated health records.
-
-- **HTTP Method:** `DELETE`
-- **Path:** `/api/students/{student_id}/`
-
-#### Response (`204 No Content`)
-
-Empty body.
-
----
-
-### 7. List Health Records for Student
-
-Retrieve all health records for a specific student, ordered by visit date descending.
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/students/{student_id}/health-records/`
-
-#### Response (`200 OK`)
-
-```json
-[
-  {
-    "health_id": 10,
-    "student_id": 1,
-    "student_name": "Juan Dela Cruz",
-    "allergies": "Penicillin",
-    "blood_type": "O+",
-    "medical_history": "Mild Asthma",
-    "medication": "Salbutamol inhaler",
-    "weight": "65.50",
-    "height": "172.00",
-    "visit": "2026-08-28T09:30:00Z",
-    "consultation": "Routine clinic visit. Vital signs stable.",
-    "created_at": "2026-08-28T09:35:00Z",
-    "updated_at": "2026-08-28T09:35:00Z"
-  }
-]
-```
-
----
-
-### 8. Create Health Record for Student
-
-Create a new health record directly associated with the specified student.
-
-- **HTTP Method:** `POST`
-- **Path:** `/api/students/{student_id}/health-records/`
-- **Content-Type:** `application/json`
-
-#### Example Request
-
-```json
-{
-  "blood_type": "O+",
-  "allergies": "Penicillin",
-  "medical_history": "None",
-  "medication": "Paracetamol 500mg",
-  "weight": "64.00",
-  "height": "172.00",
-  "visit": "2026-08-28T10:30:00Z",
-  "consultation": "Headache and mild fever. Prescribed rest and hydration."
-}
-```
-
-#### Response (`201 Created`)
-
-```json
-{
-  "health_id": 11,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
-  "allergies": "Penicillin",
-  "blood_type": "O+",
-  "medical_history": "None",
-  "medication": "Paracetamol 500mg",
-  "weight": "64.00",
-  "height": "172.00",
-  "visit": "2026-08-28T10:30:00Z",
-  "consultation": "Headache and mild fever. Prescribed rest and hydration.",
-  "created_at": "2026-08-28T10:32:00Z",
-  "updated_at": "2026-08-28T10:32:00Z"
-}
-```
-
----
-
-## Health Records API
-
-### 1. List Health Records
-
-Retrieve all clinic health records with optional filtering by student ID, blood type, or search terms.
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/health-records/`
-
-#### Query Parameters
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `student_id` | `string` / `integer` | No | Filter records by associated student identifier |
-| `blood_type` | `string` | No | Filter by blood type (`A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`, `Unknown`) |
-| `search` | `string` | No | Search across student name, allergies, consultation, or medical history |
-
-#### Response (`200 OK`)
-
-```json
-[
-  {
-    "health_id": 10,
-    "student_id": 1,
-    "student_name": "Juan Dela Cruz",
-    "allergies": "Penicillin",
-    "blood_type": "O+",
-    "medical_history": "Mild Asthma",
-    "medication": "Salbutamol",
-    "weight": "65.50",
-    "height": "172.00",
-    "visit": "2026-08-28T09:30:00Z",
-    "consultation": "Patient presented with dizziness.",
-    "created_at": "2026-08-28T09:35:00Z",
-    "updated_at": "2026-08-28T09:35:00Z"
-  }
-]
-```
-
----
-
-### 2. Create Health Record
-
-Create a new clinical consultation record.
-
-- **HTTP Method:** `POST`
-- **Path:** `/api/health-records/`
-- **Content-Type:** `application/json`
-
-#### Request Body Fields
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `student_id` | `integer` | **Yes** | ID of the student associated with this record |
-| `blood_type` | `string` | No | Blood type choice (`A+`, `A-`, `B+`, `B-`, `AB+`, `AB-`, `O+`, `O-`, `Unknown`) |
-| `allergies` | `string` | No | Known allergies |
-| `medical_history` | `string` | No | Chronic conditions and past illnesses |
-| `medication` | `string` | No | Current medications |
-| `weight` | `decimal` (0.00 - 500.00) | No | Weight in kilograms (kg) |
-| `height` | `decimal` (0.00 - 300.00) | No | Height in centimeters (cm) |
-| `visit` | `string` (date-time: ISO 8601) | No | Date and time of consultation (defaults to now) |
-| `consultation` | `string` | No | Clinical assessment notes and prescriptions |
-
-#### Example Request
-
-```json
-{
-  "student_id": 1,
-  "blood_type": "O+",
-  "allergies": "Penicillin",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol",
-  "weight": "65.50",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Patient reported mild shortness of breath. Vitals normal."
-}
-```
-
-#### Response (`201 Created`)
-
-```json
-{
-  "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
-  "allergies": "Penicillin",
-  "blood_type": "O+",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol",
-  "weight": "65.50",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Patient reported mild shortness of breath. Vitals normal.",
-  "created_at": "2026-08-28T09:35:00Z",
-  "updated_at": "2026-08-28T09:35:00Z"
-}
-```
-
----
-
-### 3. Retrieve Health Record
-
-Retrieve details of a single health record by `health_id`.
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/health-records/{health_id}/`
-
-#### Path Parameters
-
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `health_id` | `integer` | **Yes** | Unique health record identifier |
-
-#### Response (`200 OK`)
-
-```json
-{
-  "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
-  "allergies": "Penicillin",
-  "blood_type": "O+",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol",
-  "weight": "65.50",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Patient reported mild shortness of breath. Vitals normal.",
-  "created_at": "2026-08-28T09:35:00Z",
-  "updated_at": "2026-08-28T09:35:00Z"
-}
-```
-
----
-
-### 4. Fully Update Health Record
-
-Update all fields of an existing health record.
-
-- **HTTP Method:** `PUT`
-- **Path:** `/api/health-records/{health_id}/`
-- **Content-Type:** `application/json`
-
-#### Example Request
-
-```json
-{
-  "student_id": 1,
-  "blood_type": "O+",
-  "allergies": "Penicillin, Dust",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol 100mcg",
-  "weight": "66.00",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Follow-up consultation. Respiratory exam clear."
-}
-```
-
-#### Response (`200 OK`)
-
-```json
-{
-  "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
-  "allergies": "Penicillin, Dust",
-  "blood_type": "O+",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol 100mcg",
-  "weight": "66.00",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Follow-up consultation. Respiratory exam clear.",
-  "created_at": "2026-08-28T09:35:00Z",
-  "updated_at": "2026-08-28T10:00:00Z"
-}
-```
-
----
-
-### 5. Partially Update Health Record
-
-Partially update one or more fields of an existing health record.
-
-- **HTTP Method:** `PATCH`
-- **Path:** `/api/health-records/{health_id}/`
-- **Content-Type:** `application/json`
-
-#### Example Request
-
-```json
-{
-  "weight": "66.20",
-  "consultation": "Updated vitals and notes."
-}
-```
-
-#### Response (`200 OK`)
-
-```json
-{
-  "health_id": 10,
-  "student_id": 1,
-  "student_name": "Juan Dela Cruz",
-  "allergies": "Penicillin, Dust",
-  "blood_type": "O+",
-  "medical_history": "Mild Asthma",
-  "medication": "Salbutamol 100mcg",
-  "weight": "66.20",
-  "height": "172.00",
-  "visit": "2026-08-28T09:30:00Z",
-  "consultation": "Updated vitals and notes.",
-  "created_at": "2026-08-28T09:35:00Z",
-  "updated_at": "2026-08-28T10:05:00Z"
-}
-```
-
----
-
-### 6. Delete Health Record
-
-Delete an existing health record.
-
-- **HTTP Method:** `DELETE`
-- **Path:** `/api/health-records/{health_id}/`
-
-#### Response (`204 No Content`)
-
-Empty body.
-
----
-
-## System & Discovery Endpoints
-
-### 1. API Root / Discovery Endpoint
-
-- **HTTP Method:** `GET`
-- **Path:** `/`
-
-#### Response (`200 OK`)
-
-```json
-{
-  "name": "IDSC Clinic System API",
-  "version": "1.0.0",
-  "status": "healthy",
-  "endpoints": {
-    "students": "/api/students/",
-    "health_records": "/api/health-records/",
-    "student_health_records": "/api/students/<student_id>/health-records/",
-    "schema": "/api/schema/",
-    "docs": "/api/docs/",
-    "redoc": "/api/redoc/",
-    "admin": "/admin/"
-  }
-}
-```
-
-### 2. OpenAPI Schema
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/schema/`
-- **Format:** OpenAPI 3.0 YAML / JSON download
-
-### 3. Swagger UI
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/docs/`
-- **Format:** Interactive HTML Swagger UI
-
-### 4. ReDoc UI
-
-- **HTTP Method:** `GET`
-- **Path:** `/api/redoc/`
-- **Format:** Interactive HTML ReDoc UI
+Admin creation requires the Owner current_password, username/password/confirm_password, optional first_name/last_name/email. New accounts receive CLINIC_ADMIN, never superuser privileges. Maximum five Admins includes inactive accounts and excludes Owner; capacity returns 409 until one is deleted. Staff creation creates Staff only. Management edits support username/first_name/last_name/email, not role or privilege changes.
+
+Account DELETE requires JSON current_password and returns 204. Owner manages Admins; Owner/Admin manage Staff. Staff routes exclude Admin/Owner targets. Registered Owner cannot be deleted, deactivated or demoted. Owner can remove the last regular Admin. Deactivation revokes sessions; activation does not revive them. Account deletion preserves Clinic medical records.
+
+## Clinic and integration rules
+
+- Students and medicines are read-only external projections through ordinary clinic routes. Mock workspace routes simulate external administration and are Owner-only, available with CLINIC_DATA_BACKEND=mock.
+- POST students/import accepts student_id only; returns current Registrar data without duplicating identity. New records/consultations/statuses/dispensations require ACTIVE status; graduated/dropped-out/inactive students retain readable history. Ineligible creation returns 422.
+- Clinical/history deletion requires Owner/Admin. Visible record numbering is consecutive per student; API identifiers remain stable and are not reused.
+- Dispensing validates Registrar eligibility and deducts Inventory stock. Clinic persistence failure triggers attempted compensating stock restore. Explicit rollback restores stock and records the rollback transaction. History DELETE never restores stock.
+- Selected restock body: `{"mode":"SELECTED","items":[{"medicine_id":"MED-0001","quantity":25}]}`. All-active request: `{"mode":"ALL","quantity":100}`. PENDING requests do not change stock. Owner fulfillment validates every item before delivery; repeated fulfillment returns 409.
+- Inventory notifications have per-user read receipts. POST acknowledgment accepts `{"notification_ids":["notification ID"]}`. Referenced medicines and pending requests have catalog-deletion safeguards.
+
+See [EXTERNAL-WORKFLOWS.md](docs/EXTERNAL-WORKFLOWS.md), [ROLE-HIERARCHY.md](docs/ROLE-HIERARCHY.md) and [REAL-SYSTEM-INTEGRATION.md](docs/REAL-SYSTEM-INTEGRATION.md).
+
+## Pagination and errors
+
+Paginated responses contain count/page/page_size/total_pages/results. General lists default to 20/max 100; users defaults/max 10. Admin directory is an unpaginated list. Consult OpenAPI for each endpoint's filters and response schema.
+
+Errors use application/problem+json with type/title/status/detail/instance/code and optional errors for fields. Common statuses: 400 validation, 401 missing session, 403 permission/CSRF, 404 missing resource, 409 conflict/capacity/completed setup, 422 domain eligibility. CSRF middleware can return its own rejection response before API processing.
+
+## Storage and validation
+
+Accounts, sessions and the permanent Owner reference persist in Django's database. Clinic records persist when CLINIC_DATA_BACKEND=database; Registrar and default Inventory are process-local mocks. Optional durable_mock preserves simulated Inventory stock, transactions, restocks and notifications independently. CLINIC_EMPTY_START=1 starts mock stores empty; it does not reset accounts. Select database repository mode to use SQLite/PostgreSQL Clinic persistence.
+
+[SETUP.md](SETUP.md) provides commands. [CURRENT-VALIDATION.md](docs/CURRENT-VALIDATION.md) distinguishes latest checks from historical Postman/browser evidence. Original and feature collections are under postman/; use disposable data and configure local credentials/base URL. Request/response field details remain authoritative in openapi.yaml and verified runtime tests.
+
+
+## Reliability and security extensions
+
+No endpoint paths were removed or added. Coordinated business mutations accept optional Idempotency-Key (ASCII, at most128 characters), scoped to actor+method+path. Successful replay returns the original status/body and Idempotency-Replayed:true; reused key with a different body returns409. Authorization runs before replay. Receipts persist and may contain sensitive response fields: restrict database access and plan retention.
+
+Database-mode clinical updates/deletes accept If-Match from a detail ETag; stale state returns409. Updates can instead use X-Record-Version with the original updated_at ISO timestamp, as the frontend does. Invalid timestamp headers return400. Header-free legacy clients remain supported with transactional serialization; they do not receive optimistic conflict protection.
+
+Medical API responses use Cache-Control:no-store. Staff creation now enforces configured password validators and a1024-character maximum. Roleless sessions cannot read Faculty/Portal health projections. Production login throttling is10/minute per direct client IP using the configured cache; no arbitrary forwarded IP trust. In production use an appropriately shared cache/proxy policy when scaling beyond the supported single mock worker.
+
+Failed stock compensation or post-restore Clinic failure returns503 reconciliation_required and creates a private IntegrationIncident. Owner inspects/resolves incidents via Django administration after checking the Inventory ledger; marking resolved alone does not repair stock. Never blindly retry an unknown external stock outcome. See [KNOWN-LIMITATIONS.md](docs/KNOWN-LIMITATIONS.md).

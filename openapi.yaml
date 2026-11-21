@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: IDSC Clinic System API
   version: 1.0.0
@@ -6,45 +6,281 @@ info:
     endpoints for managing student records, health records, clinical consultations,
     vital signs, medical histories, and allergies.
 paths:
-  /api/health-records/:
+  /api/auth/csrf/:
     get:
-      operationId: health_records_list
-      description: Retrieve a list of all health records with optional filtering by
-        student ID, blood type, or search keyword.
-      summary: List all health records
-      parameters:
-      - in: query
-        name: blood_type
-        schema:
-          type: string
-          enum:
-          - A+
-          - A-
-          - AB+
-          - AB-
-          - B+
-          - B-
-          - O+
-          - O-
-          - Unknown
-        description: Filter health records by blood type
-      - in: query
-        name: search
-        schema:
-          type: string
-        description: Search keyword matching student name, allergies, consultation
-          notes, medical history, or student ID
-      - in: query
-        name: student_id
-        schema:
-          type: string
-        description: Filter health records for a specific student by student ID
+      operationId: auth_csrf_retrieve
+      description: Return a CSRF token and ensure the CSRF cookie is set.
       tags:
-      - Health Records
+      - auth
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfTokenResponse'
+          description: ''
+      summary: Get CSRF token
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticate credentials, create a revocable login and issue an
+        access JWT.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+      summary: Log in to the Clinic system
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Log out the current authenticated user and destroy the session.
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+      summary: Log out of the Clinic system
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Return information about the currently authenticated user.
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+          description: ''
+      summary: Get current Clinic user
+  /api/auth/owner/register/:
+    post:
+      operationId: auth_owner_register_create
+      description: One-time first Owner registration. Requires CSRF even without a
+        session. Creates exactly one Owner, starts a Django session, and permanently
+        closes registration.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerRegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OwnerRegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OwnerRegisterRequest'
+        required: true
+      security: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+        '409':
+          description: Owner registration is already complete.
+      summary: Register the first and only Owner
+  /api/auth/password/change/:
+    post:
+      operationId: auth_password_change_create
+      description: Change the authenticated user's password after verifying the current
+        password. Requires a session cookie and X-CSRFToken. Django password validators
+        apply. The current session is rotated and retained; other sessions expire
+        on their next request.
+      summary: Change your password
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+  /api/auth/password/reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: Send an expiring reset link only to the address saved on an active,
+        recoverable account. Unknown/inactive/unusable addresses return 404. CSRF
+        and rate limits apply.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetRequestRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+        '404':
+          description: No eligible account uses this email address.
+        '503':
+          description: Reset email service unavailable.
+      summary: Email a password-reset link
+  /api/auth/password/reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Redeem a valid reset link once. Applies password validators, revokes
+        all account sessions/JWTs, and requires login afterward. CSRF and rate limits
+        apply.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetConfirmRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+          description: ''
+      summary: Reset a forgotten password
+  /api/auth/setup/:
+    get:
+      operationId: auth_setup_retrieve
+      description: Public first-run status only. Inactive or previously registered
+        Owners keep registration closed.
+      tags:
+      - auth
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerSetupStatus'
+          description: ''
+      summary: Check first Owner registration availability
+  /api/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: Mint a short-lived JWT from a valid browser session. Session-only
+        and CSRF protected; accepts no refresh token. Used after reload, expiry or
+        password rotation.
+      tags:
+      - auth
       security:
       - cookieAuth: []
-      - basicAuth: []
-      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+          description: ''
+      summary: Issue a JWT from the current browser session
+  /api/auth/username/change/:
+    post:
+      operationId: auth_username_change_create
+      description: Change only the signed-in user's username after current-password
+        verification. Requires session authentication and CSRF. The current session
+        is retained; future logins use the new username.
+      summary: Change your username
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsernameChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UsernameChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UsernameChangeRequestRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionUser'
+          description: ''
+  /api/v1/admins/:
+    get:
+      operationId: v1_admins_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -52,389 +288,569 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/HealthRecord'
+                  $ref: '#/components/schemas/AdminAccount'
           description: ''
+      summary: List Clinic administrators
     post:
-      operationId: health_records_create
-      description: Create a new clinic consultation / health record associated with
-        a student.
-      summary: Create a health record
+      operationId: v1_admins_create
+      description: Owner only. Maximum five regular administrators, including inactive
+        accounts; owners do not count. At capacity returns 409. Requires owner current
+        password, CSRF and a validated new password.
       tags:
-      - Health Records
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
+              $ref: '#/components/schemas/AdminCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
+              $ref: '#/components/schemas/AdminCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
+              $ref: '#/components/schemas/AdminCreateRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthRecord'
+                $ref: '#/components/schemas/ClinicUser'
           description: ''
-  /api/health-records/{health_id}/:
+        '409':
+          description: Maximum 5 administrators, including inactive accounts. Delete
+            an administrator to free a slot.
+      summary: Create Clinic administrator
+  /api/v1/admins/{user_id}/:
     get:
-      operationId: health_records_retrieve
-      description: Retrieve details of a specific health record by health_id.
-      summary: Retrieve a health record
+      operationId: v1_admins_retrieve
       parameters:
       - in: path
-        name: health_id
+        name: user_id
         schema:
           type: integer
-          description: Unique health record identifier
         required: true
       tags:
-      - Health Records
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthRecord'
+                $ref: '#/components/schemas/AdminAccount'
           description: ''
+      summary: Retrieve administrator account (owner only)
     put:
-      operationId: health_records_update
-      description: Update all fields of an existing health record.
-      summary: Update a health record
+      operationId: v1_admins_update
       parameters:
       - in: path
-        name: health_id
+        name: user_id
         schema:
           type: integer
-          description: Unique health record identifier
         required: true
       tags:
-      - Health Records
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/HealthRecordRequest'
-        required: true
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthRecord'
+                $ref: '#/components/schemas/ClinicUser'
           description: ''
+      summary: Update administrator account (owner only)
     patch:
-      operationId: health_records_partial_update
-      description: Partially update one or more fields of an existing health record.
-      summary: Partially update a health record
+      operationId: v1_admins_partial_update
       parameters:
       - in: path
-        name: health_id
+        name: user_id
         schema:
           type: integer
-          description: Unique health record identifier
         required: true
       tags:
-      - Health Records
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthRecord'
+                $ref: '#/components/schemas/ClinicUser'
           description: ''
+      summary: Partially update administrator account (owner only)
     delete:
-      operationId: health_records_destroy
-      description: Delete an existing health record by health_id.
-      summary: Delete a health record
+      operationId: v1_admins_destroy
       parameters:
       - in: path
-        name: health_id
+        name: user_id
         schema:
           type: integer
-          description: Unique health record identifier
         required: true
       tags:
-      - Health Records
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '204':
           description: No response body
-  /api/students/:
-    get:
-      operationId: students_list
-      description: Retrieve a list of all students with optional search and filtering
-        by course, section, or sex.
-      summary: List all students
+      summary: Delete Clinic administrator
+  /api/v1/admins/{user_id}/activate/:
+    post:
+      operationId: v1_admins_activate_create
       parameters:
-      - in: query
-        name: course
+      - in: path
+        name: user_id
         schema:
-          type: string
-        description: Filter by degree program / course (case-insensitive exact match)
-      - in: query
-        name: search
-        schema:
-          type: string
-        description: Search keyword matching first name, last name, course, section,
-          or student ID
-      - in: query
-        name: section
-        schema:
-          type: string
-        description: Filter by section (case-insensitive exact match)
-      - in: query
-        name: sex
-        schema:
-          type: string
-          enum:
-          - Female
-          - Male
-          - Other
-        description: Filter by sex (Male, Female, Other)
+          type: integer
+        required: true
       tags:
-      - Students
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/AdminAccount'
           description: ''
+      summary: Activate Clinic administrator
+  /api/v1/admins/{user_id}/deactivate/:
     post:
-      operationId: students_create
-      description: Register a new student record in the IDSC Clinic System.
-      summary: Create a new student
+      operationId: v1_admins_deactivate_create
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
       tags:
-      - Students
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccount'
+          description: ''
+      summary: Deactivate Clinic administrator
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      description: Authenticate credentials, create a revocable login and issue an
+        access JWT.
+      tags:
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/LoginRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/LoginRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/LoginRequestRequest'
+        required: true
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Log in and issue a JWT
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/consultations/:
+    get:
+      operationId: v1_consultations_list
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConsultationList'
+          description: ''
+      summary: List consultations
+    post:
+      operationId: v1_consultations_create
+      description: Shared serialization and elevated clinical-deletion permission.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsultationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Consultation'
           description: ''
-  /api/students/{student_id}/:
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Create consultation
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/consultations/{consultation_id}/:
     get:
-      operationId: students_retrieve
-      description: Retrieve complete details for a specific student by student_id,
-        including full nested health records history.
-      summary: Retrieve student details
+      operationId: v1_consultations_retrieve
+      description: Shared serialization and elevated clinical-deletion permission.
       parameters:
       - in: path
-        name: student_id
+        name: consultation_id
         schema:
-          type: string
-          pattern: ^[^/]+$
+          type: integer
+          format: int64
+        description: Clinic-owned consultation identifier.
         required: true
       tags:
-      - Students
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentDetail'
+                $ref: '#/components/schemas/Consultation'
           description: ''
+      summary: Get consultation
     put:
-      operationId: students_update
-      description: Update all fields of an existing student record.
-      summary: Update a student
+      operationId: v1_consultations_update
+      description: Shared serialization and elevated clinical-deletion permission.
       parameters:
       - in: path
-        name: student_id
+        name: consultation_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned consultation identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
         schema:
           type: string
-          pattern: ^[^/]+$
-        required: true
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
       tags:
-      - Students
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/ConsultationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/ConsultationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StudentRequest'
+              $ref: '#/components/schemas/ConsultationRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Consultation'
           description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Replace consultation
     patch:
-      operationId: students_partial_update
-      description: Partially update one or more fields of an existing student record.
-      summary: Partially update a student
+      operationId: v1_consultations_partial_update
+      description: Shared serialization and elevated clinical-deletion permission.
       parameters:
       - in: path
-        name: student_id
+        name: consultation_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned consultation identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
         schema:
           type: string
-          pattern: ^[^/]+$
-        required: true
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
       tags:
-      - Students
+      - v1
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedStudentRequest'
+              $ref: '#/components/schemas/PatchedConsultationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedStudentRequest'
+              $ref: '#/components/schemas/PatchedConsultationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedStudentRequest'
+              $ref: '#/components/schemas/PatchedConsultationRequest'
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Student'
+                $ref: '#/components/schemas/Consultation'
           description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Partially update consultation
     delete:
-      operationId: students_destroy
-      description: Delete an existing student and all associated health records.
-      summary: Delete a student
+      operationId: v1_consultations_destroy
+      description: Shared serialization and elevated clinical-deletion permission.
       parameters:
       - in: path
-        name: student_id
+        name: consultation_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned consultation identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
         schema:
           type: string
-          pattern: ^[^/]+$
-        required: true
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
       tags:
-      - Students
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '204':
           description: No response body
-  /api/students/{student_id}/health-records/:
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Delete consultation
+  /api/v1/dashboard/:
     get:
-      operationId: students_health_records_list
-      description: Retrieve all health records and clinic consultations for a specific
-        student, ordered by visit date descending.
-      summary: List health records for a student
-      parameters:
-      - in: path
-        name: student_id
-        schema:
-          type: string
-          pattern: ^[^/]+$
-        required: true
+      operationId: v1_dashboard_retrieve
       tags:
-      - Students
+      - v1
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HealthRecord'
+                $ref: '#/components/schemas/Dashboard'
           description: ''
-    post:
-      operationId: students_health_records_create
-      description: Create a new clinic consultation / health record for the specified
-        student.
-      summary: Create health record for a student
-      parameters:
-      - in: path
-        name: student_id
-        schema:
-          type: string
-          pattern: ^[^/]+$
-        required: true
+      summary: Get Clinic dashboard
+  /api/v1/health:
+    get:
+      operationId: clinic_health_check
+      description: Basic Clinic API health endpoint.
       tags:
-      - Students
+      - v1
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+          description: ''
+      summary: Check Clinic API health
+      security: []
+  /api/v1/health-records/:
+    get:
+      operationId: v1_health_records_list
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHealthRecordList'
+          description: ''
+      summary: List health records
+    post:
+      operationId: v1_health_records_create
+      description: Shared serialization and elevated clinical-deletion permission.
+      tags:
+      - v1
       requestBody:
         content:
           application/json:
@@ -448,9 +864,8 @@ paths:
               $ref: '#/components/schemas/HealthRecordRequest'
         required: true
       security:
+      - bearerAuth: []
       - cookieAuth: []
-      - basicAuth: []
-      - {}
       responses:
         '201':
           content:
@@ -458,8 +873,1659 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthRecord'
           description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Create health record
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/health-records/{health_record_id}/:
+    get:
+      operationId: v1_health_records_retrieve
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: health_record_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health record identifier.
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthRecord'
+          description: ''
+      summary: Get health record
+    put:
+      operationId: v1_health_records_update
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: health_record_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health record identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HealthRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HealthRecordRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthRecord'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Replace health record
+    patch:
+      operationId: v1_health_records_partial_update
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: health_record_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health record identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthRecordRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthRecord'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Partially update health record
+    delete:
+      operationId: v1_health_records_destroy
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: health_record_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health record identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Delete health record
+  /api/v1/health-statuses/:
+    get:
+      operationId: v1_health_statuses_list
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHealthStatusList'
+          description: ''
+      summary: List health statuses
+    post:
+      operationId: v1_health_statuses_create
+      description: Shared serialization and elevated clinical-deletion permission.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Create health status
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/health-statuses/{status_id}/:
+    get:
+      operationId: v1_health_statuses_retrieve
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: status_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health status identifier.
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          description: ''
+      summary: Get health status
+    put:
+      operationId: v1_health_statuses_update
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: status_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health status identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HealthStatusRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Replace health status
+    patch:
+      operationId: v1_health_statuses_partial_update
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: status_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health status identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthStatusRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthStatusRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedHealthStatusRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Partially update health status
+    delete:
+      operationId: v1_health_statuses_destroy
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: status_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned health status identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      - name: If-Match
+        in: header
+        required: false
+        description: ETag from latest detail response. Database mode rejects stale
+          writes with 409.
+        schema:
+          type: string
+      - name: X-Record-Version
+        in: header
+        required: false
+        description: Original updated_at ISO datetime; database mode rejects stale
+          edits with 409.
+        schema:
+          type: string
+          format: date-time
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Delete health status
+  /api/v1/integrations/faculty/health-status/{student_id}/:
+    get:
+      operationId: v1_integrations_faculty_health_status_retrieve
+      description: |-
+        Read-only health-status projection for the Faculty module.
+
+        Midterm authorization uses authenticated Clinic sessions.
+        A dedicated cross-system trust mechanism can replace this boundary
+        when real module-to-module integration is introduced.
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatusProjection'
+          description: ''
+      summary: Get student health status for Faculty
+  /api/v1/integrations/student-portal/health-status/{student_id}/:
+    get:
+      operationId: v1_integrations_student_portal_health_status_retrieve
+      description: |-
+        Read-only health-status projection for the Student Portal module.
+
+        Midterm authorization uses authenticated sessions.
+        A dedicated cross-system trust mechanism can replace this boundary
+        when real module-to-module integration is introduced.
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatusProjection'
+          description: ''
+      summary: Get student health status for Student Portal
+  /api/v1/inventory-notifications/:
+    get:
+      operationId: v1_inventory_notifications_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationResponse'
+          description: ''
+      summary: Read unread Inventory notifications
+    post:
+      operationId: v1_inventory_notifications_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Mark Inventory notifications read
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/medicine-dispensations/:
+    get:
+      operationId: v1_medicine_dispensations_list
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMedicineDispensationList'
+          description: ''
+      summary: List medicine dispensations
+    post:
+      operationId: v1_medicine_dispensations_create
+      description: Shared serialization and elevated clinical-deletion permission.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineDispensation'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Dispense medicine
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/medicine-dispensations/{dispensation_id}/:
+    get:
+      operationId: v1_medicine_dispensations_retrieve
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: dispensation_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned medicine dispensation identifier.
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineDispensation'
+          description: ''
+      summary: Get medicine dispensation
+    delete:
+      operationId: v1_medicine_dispensations_destroy
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: dispensation_id
+        schema:
+          type: integer
+          format: int64
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Delete dispensing history (owner or admin)
+  /api/v1/medicine-dispensations/{dispensation_id}/rollback/:
+    post:
+      operationId: v1_medicine_dispensations_rollback_create
+      description: Shared serialization and elevated clinical-deletion permission.
+      parameters:
+      - in: path
+        name: dispensation_id
+        schema:
+          type: integer
+          format: int64
+        description: Clinic-owned medicine dispensation identifier.
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicineDispensationRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineDispensation'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Roll back medicine dispensation
+  /api/v1/medicines/:
+    get:
+      operationId: clinic_medicine_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMedicine'
+          description: ''
+      summary: List medicines
+  /api/v1/medicines/{medicine_id}/:
+    get:
+      operationId: clinic_medicine_retrieve
+      parameters:
+      - in: path
+        name: medicine_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Medicine'
+          description: ''
+      summary: Get medicine
+  /api/v1/mock/inventory/medicines/:
+    get:
+      operationId: v1_mock_inventory_medicines_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MedicineWrite'
+          description: ''
+      summary: List mock Inventory medicines (owner only)
+    post:
+      operationId: v1_mock_inventory_medicines_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicineWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicineWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicineWriteRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineWrite'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Add mock Inventory medicine (owner only)
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/mock/inventory/medicines/{medicine_id}/:
+    patch:
+      operationId: v1_mock_inventory_medicines_partial_update
+      parameters:
+      - in: path
+        name: medicine_id
+        schema:
+          type: string
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMedicineWriteRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineWrite'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Edit mock Inventory medicine (owner only)
+    delete:
+      operationId: v1_mock_inventory_medicines_destroy
+      parameters:
+      - in: path
+        name: medicine_id
+        schema:
+          type: string
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Delete mock Inventory medicine (owner only)
+  /api/v1/mock/inventory/restock-requests/{request_id}/fulfill/:
+    post:
+      operationId: v1_mock_inventory_restock_requests_fulfill_create
+      parameters:
+      - in: path
+        name: request_id
+        schema:
+          type: string
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestockResponse'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Fulfill mock restock request (owner only)
+  /api/v1/mock/registrar/students/:
+    get:
+      operationId: v1_mock_registrar_students_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentWrite'
+          description: ''
+      summary: List mock Registrar students (owner only)
+    post:
+      operationId: v1_mock_registrar_students_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StudentWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StudentWriteRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentWrite'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Add mock Registrar student (owner only)
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/mock/registrar/students/{student_id}/:
+    patch:
+      operationId: v1_mock_registrar_students_partial_update
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+        required: true
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentWriteRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentWrite'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Edit mock Registrar student (owner only)
+  /api/v1/reports/clinic-visits/:
+    get:
+      operationId: v1_reports_clinic_visits_retrieve
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicVisitsReport'
+          description: ''
+      summary: Get clinic visits report
+  /api/v1/reports/health-records/:
+    get:
+      operationId: v1_reports_health_records_retrieve
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthRecordsReport'
+          description: ''
+      summary: Get health records report
+  /api/v1/reports/medicine-dispensations/:
+    get:
+      operationId: v1_reports_medicine_dispensations_retrieve
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineDispensationReport'
+          description: ''
+      summary: Get medicine dispensations report
+  /api/v1/reports/medicine-inventory/:
+    get:
+      operationId: v1_reports_medicine_inventory_retrieve
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicineInventoryReport'
+          description: ''
+      summary: Get medicine inventory report
+  /api/v1/restock-requests/:
+    get:
+      operationId: v1_restock_requests_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RestockResponse'
+          description: ''
+      summary: List Clinic restock requests
+    post:
+      operationId: v1_restock_requests_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestockWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RestockWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RestockWriteRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestockResponse'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+        '503':
+          description: Inventory reconciliation required; Owner must inspect the private
+            incident queue before retrying.
+      summary: Request all or selected medicine restock
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/students/:
+    get:
+      operationId: clinic_student_list
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStudent'
+          description: ''
+      summary: List students
+  /api/v1/students/{student_id}/:
+    get:
+      operationId: clinic_student_retrieve
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+          description: ''
+      summary: Get student
+  /api/v1/students/import/:
+    post:
+      operationId: v1_students_import_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentLookupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StudentLookupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StudentLookupRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentWrite'
+          description: ''
+        '409':
+          description: Replay-key conflict or stale database record. Reload before
+            retrying.
+      summary: Get student by Registrar ID
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Actor/path scoped replay key; required for external writes in
+          durable_mock Inventory mode, optional otherwise. Reuse identical key/body
+          after a network failure; changed body or expired replay returns 409. Uncertain
+          Inventory outcomes return 503; do not retry with a new key.
+        schema:
+          type: string
+          maxLength: 128
+  /api/v1/users/:
+    get:
+      operationId: v1_users_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Default 10; requests above 10 are clamped to 10.
+        schema:
+          type: integer
+          maximum: 10
+          default: 10
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClinicUserList'
+          description: ''
+      summary: List Clinic staff accounts
+    post:
+      operationId: v1_users_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StaffCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffCreateRequest'
+        required: true
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffCreate'
+          description: ''
+      summary: Create Clinic staff account
+  /api/v1/users/{user_id}/:
+    get:
+      operationId: v1_users_retrieve
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicUser'
+          description: ''
+      summary: Get Clinic staff account
+    put:
+      operationId: v1_users_update
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ManagedAccountUpdateRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicUser'
+          description: ''
+      summary: Update Clinic staff account
+    patch:
+      operationId: v1_users_partial_update
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedManagedAccountUpdateRequest'
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicUser'
+          description: ''
+      summary: Partially update Clinic staff account
+    delete:
+      operationId: v1_users_destroy
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+      summary: Delete Clinic staff account
+  /api/v1/users/{user_id}/activate/:
+    post:
+      operationId: v1_users_activate_create
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicUser'
+          description: ''
+      summary: Activate Clinic staff account
+  /api/v1/users/{user_id}/deactivate/:
+    post:
+      operationId: v1_users_deactivate_create
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicUser'
+          description: ''
+      summary: Deactivate Clinic staff account
+  /health:
+    get:
+      operationId: root_health_check
+      description: Basic Clinic API health endpoint.
+      tags:
+      - health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+          description: ''
+      summary: Check Clinic API health
+      security: []
 components:
   schemas:
+    AccessToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          readOnly: true
+        token_type:
+          type: string
+          readOnly: true
+        expires_in:
+          type: integer
+          readOnly: true
+      required:
+      - access_token
+      - expires_in
+      - token_type
+    AdminAccount:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        role:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        is_system_admin:
+          type: boolean
+          readOnly: true
+        can_manage:
+          type: boolean
+          readOnly: true
+        management_restriction:
+          type: string
+          readOnly: true
+      required:
+      - can_manage
+      - is_active
+      - is_system_admin
+      - management_restriction
+      - role
+      - user_id
+      - username
+    AdminCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        confirm_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - confirm_password
+      - current_password
+      - password
+      - username
     BlankEnum:
       enum:
       - ''
@@ -485,438 +2551,1496 @@ components:
         * `O+` - O+
         * `O-` - O-
         * `Unknown` - Unknown
-    HealthRecord:
+    ClinicUser:
       type: object
-      description: |-
-        Serializer for the HealthRecord model.
-        Handles foreign-key relationship with Student via student_id.
       properties:
-        health_id:
+        user_id:
           type: integer
           readOnly: true
-          description: Unique health record identifier
-        student_id:
-          type: integer
-          description: The ID of the student associated with this health record
-        student_name:
+        username:
           type: string
-          readOnly: true
-        allergies:
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
           type: string
-          description: Known allergies (e.g. penicillin, peanuts, pollen)
-        blood_type:
-          description: |-
-            Blood type (e.g. A+, O+, etc.)
-
-            * `A+` - A+
-            * `A-` - A-
-            * `B+` - B+
-            * `B-` - B-
-            * `AB+` - AB+
-            * `AB-` - AB-
-            * `O+` - O+
-            * `O-` - O-
-            * `Unknown` - Unknown
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
           oneOf:
-          - $ref: '#/components/schemas/BloodTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        medical_history:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        role:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - is_active
+      - role
+      - user_id
+      - username
+    ClinicVisitsReport:
+      type: object
+      properties:
+        total_visits:
+          type: integer
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consultation'
+          readOnly: true
+      required:
+      - results
+      - total_visits
+    Consultation:
+      type: object
+      description: Serializer for Clinic consultation / visit records.
+      properties:
+        consultation_id:
+          type: integer
+          readOnly: true
+        student_id:
           type: string
-          description: Past medical history and chronic conditions (e.g. Asthma, Hypertension)
-        medication:
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        chief_complaint:
           type: string
-          description: Current medications and prescriptions
-        weight:
+        assessment:
           type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Weight in kilograms (kg)
-        height:
+        treatment:
           type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Height in centimeters (cm)
-        visit:
+        notes:
+          type: string
+        consulted_at:
           type: string
           format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
+          readOnly: true
         created_at:
           type: string
           format: date-time
           readOnly: true
-          description: Timestamp when health record was created
         updated_at:
           type: string
           format: date-time
           readOnly: true
-          description: Timestamp when health record was last updated
+      required:
+      - chief_complaint
+      - consultation_id
+      - consulted_at
+      - created_at
+      - student_id
+      - updated_at
+    ConsultationRequest:
+      type: object
+      description: Serializer for Clinic consultation / visit records.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        chief_complaint:
+          type: string
+          minLength: 1
+        assessment:
+          type: string
+        treatment:
+          type: string
+        notes:
+          type: string
+      required:
+      - chief_complaint
+      - student_id
+    CsrfTokenResponse:
+      type: object
+      properties:
+        csrfToken:
+          type: string
+          readOnly: true
+      required:
+      - csrfToken
+    Dashboard:
+      type: object
+      properties:
+        summary:
+          allOf:
+          - $ref: '#/components/schemas/DashboardSummary'
+          readOnly: true
+        recent_activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecentActivity'
+          readOnly: true
+      required:
+      - recent_activity
+      - summary
+    DashboardSummary:
+      type: object
+      properties:
+        total_students:
+          type: integer
+          readOnly: true
+        total_health_records:
+          type: integer
+          readOnly: true
+        total_medicine_stock:
+          type: integer
+          readOnly: true
+        low_stock_medicines:
+          type: integer
+          readOnly: true
+      required:
+      - low_stock_medicines
+      - total_health_records
+      - total_medicine_stock
+      - total_students
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          readOnly: true
+      required:
+      - status
+    HealthRecord:
+      type: object
+      description: Serializer for Clinic-owned persistent student health information.
+      properties:
+        health_record_id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: string
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        blood_type:
+          oneOf:
+          - $ref: '#/components/schemas/BloodTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        allergies:
+          type: string
+        medical_history:
+          type: string
+        current_medications:
+          type: string
+        height_cm:
+          type:
+          - string
+          - 'null'
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        weight_kg:
+          type:
+          - string
+          - 'null'
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - created_at
-      - health_id
+      - health_record_id
       - student_id
-      - student_name
       - updated_at
     HealthRecordRequest:
       type: object
-      description: |-
-        Serializer for the HealthRecord model.
-        Handles foreign-key relationship with Student via student_id.
+      description: Serializer for Clinic-owned persistent student health information.
       properties:
         student_id:
-          type: integer
-          description: The ID of the student associated with this health record
-        allergies:
           type: string
-          description: Known allergies (e.g. penicillin, peanuts, pollen)
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
         blood_type:
-          description: |-
-            Blood type (e.g. A+, O+, etc.)
-
-            * `A+` - A+
-            * `A-` - A-
-            * `B+` - B+
-            * `B-` - B-
-            * `AB+` - AB+
-            * `AB-` - AB-
-            * `O+` - O+
-            * `O-` - O-
-            * `Unknown` - Unknown
           oneOf:
           - $ref: '#/components/schemas/BloodTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
-        medical_history:
-          type: string
-          description: Past medical history and chronic conditions (e.g. Asthma, Hypertension)
-        medication:
-          type: string
-          description: Current medications and prescriptions
-        weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Weight in kilograms (kg)
-        height:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Height in centimeters (cm)
-        visit:
-          type: string
-          format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
-      required:
-      - student_id
-    PatchedHealthRecordRequest:
-      type: object
-      description: |-
-        Serializer for the HealthRecord model.
-        Handles foreign-key relationship with Student via student_id.
-      properties:
-        student_id:
-          type: integer
-          description: The ID of the student associated with this health record
         allergies:
           type: string
-          description: Known allergies (e.g. penicillin, peanuts, pollen)
-        blood_type:
-          description: |-
-            Blood type (e.g. A+, O+, etc.)
-
-            * `A+` - A+
-            * `A-` - A-
-            * `B+` - B+
-            * `B-` - B-
-            * `AB+` - AB+
-            * `AB-` - AB-
-            * `O+` - O+
-            * `O-` - O-
-            * `Unknown` - Unknown
-          oneOf:
-          - $ref: '#/components/schemas/BloodTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
         medical_history:
           type: string
-          description: Past medical history and chronic conditions (e.g. Asthma, Hypertension)
-        medication:
+        current_medications:
           type: string
-          description: Current medications and prescriptions
-        weight:
-          type: string
+        height_cm:
+          type:
+          - string
+          - 'null'
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Weight in kilograms (kg)
-        height:
-          type: string
+        weight_kg:
+          type:
+          - string
+          - 'null'
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
-          nullable: true
-          description: Height in centimeters (cm)
-        visit:
-          type: string
-          format: date-time
-          description: Date and time of clinic visit
-        consultation:
-          type: string
-          description: Clinic consultation notes, diagnosis, and treatment provided
-    PatchedStudentRequest:
-      type: object
-      description: |-
-        Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
-      properties:
-        first_name:
-          type: string
-          minLength: 1
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          minLength: 1
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          minLength: 1
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          minLength: 1
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
-    SexEnum:
-      enum:
-      - Male
-      - Female
-      - Other
-      type: string
-      description: |-
-        * `Male` - Male
-        * `Female` - Female
-        * `Other` - Other
-    Student:
-      type: object
-      description: |-
-        Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
-      properties:
-        student_id:
-          type: integer
-          readOnly: true
-          description: Auto-incrementing unique student identifier
-        first_name:
-          type: string
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
-        health_records_count:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-          description: Timestamp when student record was created
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-          description: Timestamp when student record was last updated
       required:
-      - course
-      - created_at
-      - first_name
-      - health_records_count
-      - last_name
-      - section
       - student_id
-      - updated_at
-    StudentDetail:
+    HealthRecordsReport:
       type: object
-      description: Detailed Student Serializer including nested health records history.
       properties:
-        student_id:
+        total_health_records:
           type: integer
           readOnly: true
-          description: Auto-incrementing unique student identifier
-        first_name:
-          type: string
-          description: Student's first name
-          maxLength: 100
-        last_name:
-          type: string
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-        course:
-          type: string
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
-        section:
-          type: string
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
-          type: string
-          description: Contact number or mobile phone
-          maxLength: 30
-        health_records_count:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-          description: Timestamp when student record was created
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-          description: Timestamp when student record was last updated
-        health_records:
+        results:
           type: array
           items:
             $ref: '#/components/schemas/HealthRecord'
           readOnly: true
       required:
-      - course
+      - results
+      - total_health_records
+    HealthStatus:
+      type: object
+      description: Serializer for Clinic-owned student health status.
+      properties:
+        status_id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: string
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/HealthStatusStatusEnum'
+        remarks:
+          type: string
+        effective_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
       - created_at
-      - first_name
-      - health_records
-      - health_records_count
-      - last_name
-      - section
+      - effective_at
+      - status
+      - status_id
       - student_id
       - updated_at
-    StudentRequest:
+    HealthStatusProjection:
+      type: object
+      description: Restricted health-status response for Faculty and Student Portal.
+      properties:
+        student_id:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+        remarks:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+        effective_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+      required:
+      - effective_at
+      - remarks
+      - status
+      - student_id
+    HealthStatusRequest:
+      type: object
+      description: Serializer for Clinic-owned student health status.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/HealthStatusStatusEnum'
+        remarks:
+          type: string
+      required:
+      - status
+      - student_id
+    HealthStatusStatusEnum:
+      enum:
+      - CLEARED
+      - RESTRICTED
+      - UNDER_OBSERVATION
+      type: string
+      description: |-
+        * `CLEARED` - Cleared
+        * `RESTRICTED` - Restricted
+        * `UNDER_OBSERVATION` - Under Observation
+    LoginRequestRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - password
+      - username
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          readOnly: true
+        user:
+          allOf:
+          - $ref: '#/components/schemas/SessionUser'
+          readOnly: true
+        access_token:
+          type: string
+          readOnly: true
+        token_type:
+          type: string
+          readOnly: true
+        expires_in:
+          type: integer
+          readOnly: true
+      required:
+      - access_token
+      - expires_in
+      - message
+      - token_type
+      - user
+    ManagedAccountUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+    Medicine:
       type: object
       description: |-
-        Serializer for the Student model.
-        Handles student CRUD with validation on unique student_id and fields.
+        Read-only projection of medicine/stock data owned by Inventory.
+
+        This serializer has no Clinic ORM model and must never mutate Inventory
+        master data.
       properties:
+        medicine_id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        generic_name:
+          type: string
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+        quantity_in_stock:
+          type: integer
+          readOnly: true
+        reorder_level:
+          type: integer
+          readOnly: true
+        is_low_stock:
+          type: boolean
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+      required:
+      - generic_name
+      - is_low_stock
+      - medicine_id
+      - name
+      - quantity_in_stock
+      - reorder_level
+      - status
+      - unit
+    MedicineDispensation:
+      type: object
+      description: |-
+        Serializer for Clinic-owned medicine dispensation records.
+
+        Inventory owns medicine stock. inventory_transaction_id is populated by
+        the dispensing orchestration/service after Inventory accepts the stock
+        deduction.
+      properties:
+        dispensation_id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: string
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        medicine_id:
+          type: string
+          description: Opaque medicine identifier owned by Inventory
+          maxLength: 100
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        reason:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MedicineDispensationStatusEnum'
+          readOnly: true
+        inventory_transaction_id:
+          type: string
+          readOnly: true
+          description: Inventory transaction created when stock is deducted
+        rollback_transaction_id:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+          description: Inventory transaction created when a dispensation is rolled
+            back
+        dispensed_at:
+          type: string
+          format: date-time
+          readOnly: true
+        rolled_back_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - dispensation_id
+      - dispensed_at
+      - inventory_transaction_id
+      - medicine_id
+      - quantity
+      - rollback_transaction_id
+      - rolled_back_at
+      - status
+      - student_id
+    MedicineDispensationReport:
+      type: object
+      properties:
+        total_dispensations:
+          type: integer
+          readOnly: true
+        total_quantity_dispensed:
+          type: integer
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicineDispensation'
+          readOnly: true
+      required:
+      - results
+      - total_dispensations
+      - total_quantity_dispensed
+    MedicineDispensationRequest:
+      type: object
+      description: |-
+        Serializer for Clinic-owned medicine dispensation records.
+
+        Inventory owns medicine stock. inventory_transaction_id is populated by
+        the dispensing orchestration/service after Inventory accepts the stock
+        deduction.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        medicine_id:
+          type: string
+          minLength: 1
+          description: Opaque medicine identifier owned by Inventory
+          maxLength: 100
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+        reason:
+          type: string
+      required:
+      - medicine_id
+      - quantity
+      - student_id
+    MedicineDispensationStatusEnum:
+      enum:
+      - COMPLETED
+      - ROLLED_BACK
+      type: string
+      description: |-
+        * `COMPLETED` - Completed
+        * `ROLLED_BACK` - Rolled Back
+    MedicineInventoryReport:
+      type: object
+      properties:
+        total_medicines:
+          type: integer
+          readOnly: true
+        total_stock:
+          type: integer
+          readOnly: true
+        low_stock_medicines:
+          type: integer
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medicine'
+          readOnly: true
+      required:
+      - low_stock_medicines
+      - results
+      - total_medicines
+      - total_stock
+    MedicineWrite:
+      type: object
+      properties:
+        medicine_id:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        name:
+          type: string
+          maxLength: 150
+        generic_name:
+          type: string
+          maxLength: 150
+        unit:
+          type: string
+          maxLength: 40
+        quantity_in_stock:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        reorder_level:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/MedicineWriteStatusEnum'
+        is_low_stock:
+          type: boolean
+          readOnly: true
+      required:
+      - generic_name
+      - is_low_stock
+      - medicine_id
+      - name
+      - quantity_in_stock
+      - reorder_level
+      - status
+      - unit
+    MedicineWriteRequest:
+      type: object
+      properties:
+        medicine_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        generic_name:
+          type: string
+          maxLength: 150
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 40
+        quantity_in_stock:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        reorder_level:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/MedicineWriteStatusEnum'
+      required:
+      - generic_name
+      - medicine_id
+      - name
+      - quantity_in_stock
+      - reorder_level
+      - status
+      - unit
+    MedicineWriteStatusEnum:
+      enum:
+      - ACTIVE
+      - INACTIVE
+      type: string
+      description: |-
+        * `ACTIVE` - ACTIVE
+        * `INACTIVE` - INACTIVE
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          readOnly: true
+      required:
+      - message
+    ModeEnum:
+      enum:
+      - ALL
+      - SELECTED
+      type: string
+      description: |-
+        * `ALL` - ALL
+        * `SELECTED` - SELECTED
+    NotificationReadRequest:
+      type: object
+      properties:
+        notification_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+          maxItems: 200
+      required:
+      - notification_ids
+    NotificationResponse:
+      type: object
+      properties:
+        notification_id:
+          type: string
+        message:
+          type: string
+        kind:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - kind
+      - message
+      - notification_id
+    NullEnum:
+      type: 'null'
+    OwnerRegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        confirm_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - confirm_password
+      - password
+      - username
+    OwnerSetupStatus:
+      type: object
+      properties:
+        owner_registration_available:
+          type: boolean
+          readOnly: true
+      required:
+      - owner_registration_available
+    PaginatedClinicUserList:
+      type: object
+      additionalProperties: false
+      required:
+      - count
+      - page
+      - page_size
+      - total_pages
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 10
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicUser'
+    PaginatedConsultationList:
+      type: object
+      additionalProperties: false
+      required:
+      - count
+      - page
+      - page_size
+      - total_pages
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Consultation'
+    PaginatedHealthRecordList:
+      type: object
+      additionalProperties: false
+      required:
+      - count
+      - page
+      - page_size
+      - total_pages
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthRecord'
+    PaginatedHealthStatusList:
+      type: object
+      additionalProperties: false
+      required:
+      - count
+      - page
+      - page_size
+      - total_pages
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthStatus'
+    PaginatedMedicine:
+      type: object
+      properties:
+        count:
+          type: integer
+          readOnly: true
+        page:
+          type: integer
+          readOnly: true
+        page_size:
+          type: integer
+          readOnly: true
+        total_pages:
+          type: integer
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Medicine'
+          readOnly: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedMedicineDispensationList:
+      type: object
+      additionalProperties: false
+      required:
+      - count
+      - page
+      - page_size
+      - total_pages
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        page_size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicineDispensation'
+    PaginatedStudent:
+      type: object
+      properties:
+        count:
+          type: integer
+          readOnly: true
+        page:
+          type: integer
+          readOnly: true
+        page_size:
+          type: integer
+          readOnly: true
+        total_pages:
+          type: integer
+          readOnly: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+          readOnly: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PasswordChangeRequestRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        confirm_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - confirm_password
+      - current_password
+      - new_password
+    PatchedConsultationRequest:
+      type: object
+      description: Serializer for Clinic consultation / visit records.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        chief_complaint:
+          type: string
+          minLength: 1
+        assessment:
+          type: string
+        treatment:
+          type: string
+        notes:
+          type: string
+    PatchedHealthRecordRequest:
+      type: object
+      description: Serializer for Clinic-owned persistent student health information.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        blood_type:
+          oneOf:
+          - $ref: '#/components/schemas/BloodTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        allergies:
+          type: string
+        medical_history:
+          type: string
+        current_medications:
+          type: string
+        height_cm:
+          type:
+          - string
+          - 'null'
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        weight_kg:
+          type:
+          - string
+          - 'null'
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+    PatchedHealthStatusRequest:
+      type: object
+      description: Serializer for Clinic-owned student health status.
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          description: Opaque student identifier owned by Registrar
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/HealthStatusStatusEnum'
+        remarks:
+          type: string
+    PatchedManagedAccountUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+    PatchedMedicineWriteRequest:
+      type: object
+      properties:
+        medicine_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        generic_name:
+          type: string
+          maxLength: 150
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 40
+        quantity_in_stock:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        reorder_level:
+          type: integer
+          maximum: 1000000
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/MedicineWriteStatusEnum'
+    PatchedStudentWriteRequest:
+      type: object
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
         first_name:
           type: string
           minLength: 1
-          description: Student's first name
-          maxLength: 100
+          maxLength: 150
         last_name:
           type: string
           minLength: 1
-          description: Student's last name
-          maxLength: 100
-        birth_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of birth (YYYY-MM-DD)
-        sex:
-          description: |-
-            Student's sex/gender
-
-            * `Male` - Male
-            * `Female` - Female
-            * `Other` - Other
-          oneOf:
-          - $ref: '#/components/schemas/SexEnum'
-          - $ref: '#/components/schemas/BlankEnum'
+          maxLength: 150
         course:
           type: string
           minLength: 1
-          description: Degree program or course (e.g. BSIT, BSCS, BSN)
-          maxLength: 100
+          maxLength: 80
         section:
           type: string
           minLength: 1
-          description: Class section (e.g. 3A, 1-1, CS401)
-          maxLength: 50
-        contact_no:
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StudentWriteStatusEnum'
+    RecentActivity:
+      type: object
+      properties:
+        activity_type:
           type: string
-          description: Contact number or mobile phone
-          maxLength: 30
+          readOnly: true
+        reference_id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: string
+          readOnly: true
+        occurred_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - activity_type
+      - occurred_at
+      - reference_id
+      - student_id
+    ResetConfirmRequest:
+      type: object
+      properties:
+        uid:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        confirm_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - confirm_password
+      - new_password
+      - token
+      - uid
+    ResetRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+      required:
+      - email
+    RestockItemRequest:
+      type: object
+      properties:
+        medicine_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+        quantity:
+          type: integer
+          maximum: 100000
+          minimum: 1
+      required:
+      - medicine_id
+      - quantity
+    RestockResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        status:
+          type: string
+        mode:
+          type: string
+        requested_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        fulfilled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - created_at
+      - fulfilled_at
+      - items
+      - mode
+      - request_id
+      - requested_by
+      - status
+    RestockWriteRequest:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        quantity:
+          type: integer
+          maximum: 100000
+          minimum: 1
+          default: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestockItemRequest'
+      required:
+      - mode
+    RoleEnum:
+      enum:
+      - OWNER
+      - ADMIN
+      - STAFF
+      type: string
+      description: |-
+        * `OWNER` - OWNER
+        * `ADMIN` - ADMIN
+        * `STAFF` - STAFF
+    SessionUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          readOnly: true
+          oneOf:
+          - type: string
+            format: email
+          - type: string
+            maxLength: 0
+        is_staff:
+          type: boolean
+          readOnly: true
+        role:
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - email
+      - id
+      - is_staff
+      - role
+      - username
+    StaffCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+      required:
+      - username
+    StaffCreateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+      required:
+      - password
+      - username
+    Student:
+      type: object
+      description: |-
+        Read-only projection of student data owned by Registrar.
+
+        This serializer has no Clinic ORM model and must never create, update,
+        or delete students.
+      properties:
+        student_id:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        course:
+          type: string
+          readOnly: true
+        section:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
       required:
       - course
       - first_name
       - last_name
       - section
+      - status
+      - student_id
+    StudentLookupRequest:
+      type: object
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+      - student_id
+    StudentWrite:
+      type: object
+      properties:
+        student_id:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        course:
+          type: string
+          maxLength: 80
+        section:
+          type: string
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StudentWriteStatusEnum'
+      required:
+      - course
+      - first_name
+      - last_name
+      - section
+      - status
+      - student_id
+    StudentWriteRequest:
+      type: object
+      properties:
+        student_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        course:
+          type: string
+          minLength: 1
+          maxLength: 80
+        section:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          $ref: '#/components/schemas/StudentWriteStatusEnum'
+      required:
+      - course
+      - first_name
+      - last_name
+      - section
+      - status
+      - student_id
+    StudentWriteStatusEnum:
+      enum:
+      - ACTIVE
+      - GRADUATED
+      - DROPPED_OUT
+      - INACTIVE
+      type: string
+      description: |-
+        * `ACTIVE` - ACTIVE
+        * `GRADUATED` - GRADUATED
+        * `DROPPED_OUT` - DROPPED_OUT
+        * `INACTIVE` - INACTIVE
+    UsernameChangeRequestRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 1024
+        new_username:
+          type: string
+          minLength: 1
+          maxLength: 150
+      required:
+      - current_password
+      - new_username
   securitySchemes:
-    basicAuth:
+    bearerAuth:
       type: http
-      scheme: basic
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived revocable JWT from login or the CSRF-protected session
+        token endpoint. Current database roles remain authoritative.
     cookieAuth:
       type: apiKey
       in: cookie
       name: sessionid
+      description: Django session cookie authentication. State-changing session-authenticated
+        requests must also satisfy Django CSRF protection.
+servers:
+- url: http://127.0.0.1:8000
+  description: Local Django development server

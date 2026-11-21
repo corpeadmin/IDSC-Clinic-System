@@ -1,0 +1,362 @@
+name: Clinic quality
+on:
+  push:
+    branches: [main, 'improvement/**', 'integration/**', 'submission/**']
+  pull_request:
+    branches: [main, 'improvement/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHONUNBUFFERED: '1'
+  DEBUG: 'True'
+  SECRET_KEY: 'ci-only-synthetic-secret-not-for-deployment-491839102753817'
+  CLINIC_DISPOSABLE: '1'
+  CLINIC_TEST_USERNAME: 'ci_owner'
+  CLINIC_TEST_PASSWORD: 'SyntheticGarden!49183'
+  CLINIC_TEST_NEW_PASSWORD: 'SyntheticForest!71923'
+jobs:
+  backend:
+    name: Backend / ${{ matrix.database }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: clinic_ci
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: clinic_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    env:
+      DB_ENGINE: ${{ matrix.database == 'postgres' && 'django.db.backends.postgresql' || 'django.db.backends.sqlite3' }}
+      DB_NAME: ${{ matrix.database == 'postgres' && 'clinic_ci' || 'ci.sqlite3' }}
+      DB_USER: clinic_ci
+      DB_PASSWORD: synthetic-ci-only
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install -r backend/requirements-finals.txt
+      - name: Match backup clients to PostgreSQL 16 service
+        if: matrix.database == 'postgres'
+        run: |
+          mkdir -p "$RUNNER_TEMP/pg16"
+          for tool in pg_dump pg_restore; do
+            cat > "$RUNNER_TEMP/pg16/$tool" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm --network host --env PGPASSWORD --volume /tmp:/tmp postgres:16 "$(basename "$0")" "$@"
+          SCRIPT
+            chmod +x "$RUNNER_TEMP/pg16/$tool"
+          done
+          echo "$RUNNER_TEMP/pg16" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/pg16/pg_dump" --version
+          "$RUNNER_TEMP/pg16/pg_restore" --version
+      - name: Django system checks
+        run: python backend/manage.py check
+      - name: Migration drift
+        run: python backend/manage.py makemigrations --check --dry-run
+      - name: Apply migrations
+        run: python backend/manage.py migrate --noinput
+      - name: Full suite including security regressions
+        working-directory: backend
+        run: python manage.py test --noinput --verbosity 2 2>&1 | tee "$RUNNER_TEMP/backend-tests.txt"
+      - name: Authorization, credential and uncertainty regression checks
+        working-directory: backend
+        run: python manage.py test clinic.tests.test_verification_security clinic.tests.test_permissions authentication.tests.test_role_hierarchy --noinput
+      - name: Explicit persistence and concurrency checks
+        working-directory: backend
+        run: python manage.py test clinic.tests.test_persistent_repository clinic.tests.test_concurrency clinic.tests.test_reliability --noinput
+      - name: Physical backup and restore with separate mock ledger
+        run: python scripts/verify_restore.py
+      - name: Write restart fixtures
+        env:
+          CLINIC_DATA_BACKEND: database
+          INVENTORY_BACKEND: durable_mock
+        run: python scripts/verify_persistence.py write
+      - name: Restart actual PostgreSQL service
+        if: matrix.database == 'postgres'
+        run: |
+          docker restart ${{ job.services.postgres.id }}
+          for i in {1..60}; do pg_isready -h 127.0.0.1 -U clinic_ci && break; sleep 1; done
+      - name: Read fixtures in fresh application process
+        env:
+          CLINIC_DATA_BACKEND: database
+          INVENTORY_BACKEND: durable_mock
+        run: python scripts/verify_persistence.py read
+      - name: Export counts without sensitive payloads
+        if: always()
+        env:
+          SUMMARY_DATABASE: ${{ matrix.database }}
+          SUMMARY_STATUS: ${{ job.status }}
+        run: python scripts/summarize_tests.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: backend-counts-${{ matrix.database }}
+          path: quality-summary.json
+          retention-days: 14
+  contracts:
+    name: OpenAPI contracts and Redocly
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Dynamic OpenAPI validation
+        run: python backend/manage.py spectacular --validate --fail-on-warn --file /tmp/dynamic.yaml
+      - name: Static versus runtime contract equality
+        run: python scripts/check_contract.py
+      - name: Cloud release guards and frontend packaging
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Static and dynamic Redocly lint
+        run: |
+          npx --yes @redocly/cli@2.7.0 lint openapi.yaml
+          npx --yes @redocly/cli@2.7.0 lint /tmp/dynamic.yaml --config redocly.yaml
+  frontend:
+    name: Frontend lint and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run: {working-directory: frontend}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+  dependencies:
+    name: Dependency vulnerability checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - run: python -m pip install pip-audit==2.10.1
+      - run: python -m pip_audit -r backend/requirements-deployment.txt
+      - run: npm ci --prefix frontend
+      - run: npm audit --prefix frontend --audit-level=moderate
+  deployment:
+    name: Private HTTPS container deployment smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_PASSWORD: 'synthetic-deployment-only-817263'
+      CLINIC_HOST: localhost
+      CLINIC_CA_FILE: /tmp/clinic-root.crt
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - name: Build and start private deployment
+        run: docker compose -f deploy/compose.yml up --build --detach --wait --wait-timeout 180
+      - name: Verify hosted backend static serving without Caddy
+        run: |
+          docker compose -f deploy/compose.yml exec -T backend python -c "import os, urllib.request; assert os.environ['STATIC_ROOT'] == '/static'; r=urllib.request.Request('http://127.0.0.1:8000/static/admin/css/base.css', headers={'Host':'localhost', 'X-Forwarded-Proto':'https'}); response=urllib.request.urlopen(r, timeout=10); assert response.status == 200; assert 'text/css' in response.headers['Content-Type']; print('PASS: hosted backend serves collected admin CSS directly.')"
+      - name: Trust only the disposable proxy CA
+        run: |
+          for i in {1..30}; do docker compose -f deploy/compose.yml exec -T web test -f /data/caddy/pki/authorities/local/root.crt && break; sleep 1; done
+          docker compose -f deploy/compose.yml cp web:/data/caddy/pki/authorities/local/root.crt /tmp/clinic-root.crt
+          curl --fail --retry 5 --retry-connrefused --cacert /tmp/clinic-root.crt https://localhost/
+      - name: Verify HTTPS session and application writes
+        run: python scripts/deployment_smoke.py write
+      - name: Restart backend process
+        run: |
+          docker compose -f deploy/compose.yml restart backend
+          for i in {1..60}; do curl --fail --silent --cacert /tmp/clinic-root.crt https://localhost/api/auth/setup/ && break; sleep 1; done
+      - name: Verify records, simulated stock and rollback after restart
+        run: python scripts/deployment_smoke.py read
+      - name: Shut down disposable stack
+        if: always()
+        run: docker compose -f deploy/compose.yml down --volumes
+  newman:
+    name: Postman API regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DB_NAME: newman.sqlite3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - run: python -m pip install -r backend/requirements.txt
+      - run: python backend/manage.py migrate --noinput
+      - run: python scripts/seed_validation.py
+      - name: Start isolated API
+        run: |
+          python backend/manage.py runserver 127.0.0.1:8002 --noreload > /tmp/backend.log 2>&1 &
+          for i in {1..60}; do curl -fsS http://127.0.0.1:8002/api/auth/setup/ && break; sleep 1; done
+      - name: All six Newman collections
+        run: |
+          for name in IDSC-Clinic-System Password-change Account-management Account-lifecycle Role-hierarchy External-workflows; do
+            npx --yes newman@6.2.1 run "postman/$name.postman_collection.json" \
+              --env-var "username=$CLINIC_TEST_USERNAME" \
+              --env-var "password=$CLINIC_TEST_PASSWORD" \
+              --env-var "newPassword=$CLINIC_TEST_NEW_PASSWORD" \
+              --reporter-cli-no-console --reporter-cli-no-banner
+          done
+  browser:
+    name: Browser / ${{ matrix.fixture }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [workflows, limits, first-owner, accessibility, password-recovery]
+    env:
+      DB_NAME: browser.sqlite3
+      CLINIC_DATA_BACKEND: mock
+      CLINIC_EMPTY_START: '0'
+      CLINIC_TEST_FIRST_RUN: ${{ matrix.fixture == 'first-owner' && '1' || '0' }}
+      CLINIC_TEST_LIMITS: ${{ matrix.fixture == 'limits' && '1' || '0' }}
+      CLINIC_TEST_BASE_URL: http://127.0.0.1:5173
+      EMAIL_BACKEND: django.core.mail.backends.filebased.EmailBackend
+      EMAIL_FILE_PATH: ${{ github.workspace }}/.runtime/reset-emails
+      CLINIC_TEST_EMAIL_OUTBOX: ${{ github.workspace }}/.runtime/reset-emails
+      PASSWORD_RESET_FRONTEND_URL: http://127.0.0.1:5173
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - run: python -m pip install -r backend/requirements.txt
+      - run: npm ci --prefix frontend
+      - run: npx --prefix frontend playwright install --with-deps chromium
+      - run: python backend/manage.py migrate --noinput
+      - if: matrix.fixture != 'first-owner'
+        run: python scripts/seed_validation.py
+      - name: Start disposable services
+        run: |
+          python backend/manage.py runserver 127.0.0.1:8002 --noreload > /tmp/backend.log 2>&1 &
+          npm --prefix frontend run dev -- --host 127.0.0.1 > /tmp/frontend.log 2>&1 &
+          python scripts/wait_services.py
+      - name: Browser stories
+        working-directory: frontend
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          case "$FIXTURE" in
+            workflows) npx playwright test clinic.spec.js password-change.spec.js account-management.spec.js account-lifecycle.spec.js role-hierarchy.spec.js external-workflows.spec.js mock-catalog.spec.js jwt.spec.js ;;
+            limits) npx playwright test account-limits.spec.js ;;
+            first-owner) npx playwright test owner-registration.spec.js ;;
+            accessibility) npx playwright test accessibility.spec.js modal-focus.spec.js session-expiry.spec.js ;;
+            password-recovery) npx playwright test password-recovery.spec.js ;;
+          esac
+      - name: Safe failure diagnostics
+        if: failure()
+        run: tail -n 60 /tmp/backend.log /tmp/frontend.log || true
+  release:
+    name: Publish tested production commit
+    needs: [backend, contracts, frontend, dependencies, deployment, newman, browser]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CLINIC_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ vars.CLINIC_PUBLIC_ORIGIN }}
+    env:
+      RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      CLINIC_BACKEND_ORIGIN: ${{ vars.CLINIC_BACKEND_ORIGIN }}
+      CLINIC_PUBLIC_ORIGIN: ${{ vars.CLINIC_PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24'}
+      - name: Validate production target variables
+        run: |
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, 'scripts')
+          from prepare_cloud_frontend import https_origin
+          for name in ('RENDER_SERVICE_ID', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID'):
+              if not os.environ.get(name):
+                  raise SystemExit('Missing production variable: ' + name)
+          for name in ('CLINIC_BACKEND_ORIGIN', 'CLINIC_PUBLIC_ORIGIN'):
+              https_origin(os.environ.get(name, ''))
+          PY
+      - name: Install pinned deployment CLI
+        run: npm install --global vercel@66.6.0
+      - name: Build static frontend without production credentials
+        run: |
+          npm ci --prefix frontend
+          npm --prefix frontend run build
+          python scripts/prepare_cloud_frontend.py
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('.vercel/project.json').write_text(json.dumps({
+              'orgId': os.environ['VERCEL_ORG_ID'],
+              'projectId': os.environ['VERCEL_PROJECT_ID'],
+          }))
+          PY
+      - name: Deploy exact backend revision and wait for live status
+        run: python scripts/deploy_render.py
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      - name: Stage production frontend without assigning domains
+        id: stage
+        run: |
+          vercel deploy --prebuilt --prod --skip-domain --yes --json > "$RUNNER_TEMP/vercel-release.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.parse import urlsplit
+          data = json.loads((Path(os.environ['RUNNER_TEMP']) / 'vercel-release.json').read_text())
+          value = data.get('deployment', data).get('url', '')
+          if value and not value.startswith('https://'):
+              value = 'https://' + value
+          url = urlsplit(value)
+          if url.scheme != 'https' or not url.hostname or not url.hostname.endswith('.vercel.app') or url.path or url.query or url.fragment or url.username or url.password:
+              raise SystemExit('Vercel did not return a valid staging URL.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('url=' + value + '\n')
+          PY
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Check staged frontend and same-origin backend
+        run: python scripts/check_public_deployment.py
+        env:
+          CLINIC_PUBLIC_ORIGIN: ${{ steps.stage.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Promote tested frontend
+        run: vercel promote "$STAGED_ORIGIN" --yes
+        env:
+          STAGED_ORIGIN: ${{ steps.stage.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Check public production website
+        run: python scripts/check_public_deployment.py

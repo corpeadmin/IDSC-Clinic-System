@@ -1,48 +1,101 @@
 """
-URL configuration for IDSC Clinic System backend.
+Root URL configuration for the IDSC Clinic System backend.
+
+Business API:
+    /api/v1/
+
+Authentication:
+    /api/auth/
+
+API documentation:
+    /api/schema/
 """
 
 from django.contrib import admin
-from django.urls import path, include
 from django.http import JsonResponse
+from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 
 
 def api_root_view(request):
-    """Simple health / discovery endpoint for the backend API."""
-    return JsonResponse({
-        'name': 'IDSC Clinic System API',
-        'version': '1.0.0',
-        'status': 'healthy',
-        'endpoints': {
-            'students': '/api/students/',
-            'health_records': '/api/health-records/',
-            'student_health_records': '/api/students/<student_id>/health-records/',
-            'admin': '/admin/',
+    """Backend discovery endpoint."""
+    return JsonResponse(
+        {
+            "name": "IDSC Clinic System API",
+            "version": "1.0.0",
+            "status": "healthy",
+            "endpoints": {
+                "api": "/api/v1/",
+                "authentication": "/api/auth/",
+                "schema": "/api/schema/",
+                "swagger_ui": "/docs",
+                "redoc": "/api/schema/redoc/",
+                "admin": "/admin/",
+            },
         }
-    })
+    )
+
+
+from authentication.views import AdminListCreateView, AdminDetailView, AdminAccessView, login_view
+from clinic.views import HealthView
+from clinic.serializers import HealthCheckSerializer
+from drf_spectacular.utils import extend_schema
+
+
+class RootHealthView(HealthView):
+    @extend_schema(operation_id="root_health_check", responses=HealthCheckSerializer)
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/auth/', include('authentication.urls')),
-    path('api/', include('clinic.urls')),
-    path('', api_root_view, name='api-root'),
+    path("health", RootHealthView.as_view(), name="root-health"),
+    path("api/v1/auth/login/", login_view, name="jwt-login"),
+    path("admin/", admin.site.urls),
+
+    # Authentication remains outside the versioned business namespace.
+    path("api/auth/", include("authentication.urls")),
+
+    # Administrative Clinic user management.
+    path("api/v1/users/", include("authentication.user_urls")),
+    path("api/v1/admins/", AdminListCreateView.as_view(), name="clinic-admin-list-create"),
+    path("api/v1/admins/<int:user_id>/", AdminDetailView.as_view(), name="clinic-admin-detail"),
+    path("api/v1/admins/<int:user_id>/deactivate/", AdminAccessView.as_view(action="deactivate"), name="clinic-admin-deactivate"),
+    path("api/v1/admins/<int:user_id>/activate/", AdminAccessView.as_view(action="activate"), name="clinic-admin-activate"),
+
+    # Canonical Clinic business API.
+    path("api/v1/", include("clinic.urls")),
+
+    # OpenAPI schema and interactive documentation.
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    # Canonical rubric-required Swagger UI.
+    path(
+        "docs",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="docs",
+    ),
+    path(
+        "docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="docs-slash",
+    ),
+
+    # Backward-compatible Swagger route.
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
+
+    # Backend discovery endpoint.
+    path("", api_root_view, name="api-root"),
 ]
-
-from drf_spectacular.views import (
-    SpectacularAPIView,
-    SpectacularSwaggerView,
-    SpectacularRedocView,
-)
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/auth/', include('authentication.urls')),
-    path('api/', include('clinic.urls')),
-    path('', api_root_view, name='api-root'),
-
-    # OpenAPI schema + docs
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-]       
