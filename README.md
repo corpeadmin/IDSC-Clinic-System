@@ -1,6 +1,6 @@
 # IDSC Clinic Management System
 
-Live school demo: [Clinic website](https://idsc-clinic-management.vercel.app), [Swagger UI](https://idsc-clinic-management.vercel.app/docs), and [health](https://idsc-clinic-management.vercel.app/health). Hosted on Vercel and Render Free with Supabase PostgreSQL; cloud recovery uses Brevo HTTPS. See [hosted release setup and limits](docs/CLOUD-RELEASE.md). Real Registrar/Inventory gateway integration and the first main-branch automated release remain outstanding.
+Live school demo: [Clinic website](https://idsc-clinic-management.vercel.app), [Swagger UI](https://idsc-clinic-management.vercel.app/docs), and [health](https://idsc-clinic-management.vercel.app/health). Hosted on Vercel and Render Free with Supabase PostgreSQL; cloud recovery uses Brevo HTTPS. See [hosted release setup and limits](docs/CLOUD-RELEASE.md). The main-branch automated release passed all 13 jobs on 21 November 2026. See [release evidence](docs/RELEASE-EVIDENCE.md). Real Registrar/Inventory gateway integration remains outstanding.
 
 Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; Gmail delivery and reset were confirmed by the user on 20 November 2026. Each installation requires its own private sender configuration. Unknown emails show an error.
 
@@ -14,7 +14,7 @@ Verification pass: [latest results](docs/VERIFICATION-RESULTS.md),
 [security review](docs/VERIFICATION-SECURITY.md). Optional durable mock stock
 survives restarts; no real external connectivity is claimed.
 
-Repository: [microwaveTuesday/IDSC-Clinic-System](https://github.com/microwaveTuesday/IDSC-Clinic-System), transferred to the project operator on 21 November 2026. The integration was merged into `main`; ownership/release follow-up uses `integration/ownership-release`. Latest local evidence: [CURRENT-VALIDATION.md](docs/CURRENT-VALIDATION.md). Earlier verification branch: `improvement/clinic-final-verification`. Branch selection history: [CONSOLIDATION-AUDIT.md](docs/CONSOLIDATION-AUDIT.md). Use a reviewed PR for changes to main.
+Repository: [microwaveTuesday/IDSC-Clinic-System](https://github.com/microwaveTuesday/IDSC-Clinic-System), transferred to the project operator on 21 November 2026. The integration was merged into `main`; production commit `f43769b` passed the protected automated release. Latest local evidence: [CURRENT-VALIDATION.md](docs/CURRENT-VALIDATION.md). Earlier verification branch: `improvement/clinic-final-verification`. Branch selection history: [CONSOLIDATION-AUDIT.md](docs/CONSOLIDATION-AUDIT.md). Use a reviewed PR for changes to main.
 
 ## Run in VS Code
 

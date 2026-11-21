@@ -1,5 +1,13 @@
 # Current validation record
 
+## Successful automated production release - 21 November 2026
+
+Commit `f43769bf88c94289f03f05fcee17c808180f670c` completed [main run 44891807127](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44891807127) with **all 13 jobs successful**. The operator approved this exact commit through the protected production environment. Render deployed the tested backend SHA; the staged frontend passed checks, project-scoped REST promotion assigned its stable domain, and final public checks passed.
+
+Independent post-release checks passed: public frontend, health, database-backed setup, closed Owner registration, no-store API, Swagger, anonymous dashboard rejection, Owner login, JWT-protected dashboard and admin CSS. The live API contract equals the committed contract: 50 paths and 77 operations. See [RELEASE-EVIDENCE.md](RELEASE-EVIDENCE.md).
+
+The dated sections below are historical snapshots; their pending statements describe the state at that time. The two failed release attempts were superseded by this successful run. Real partner integration and completed hosted reset redemption remain unverified.
+
 ## Project-token promotion follow-up - 21 November 2026
 
 The second gated run for 55ef629 (44890616421) passed all 12 quality jobs and deployed the exact backend revision, but explicit CLI scope caused staging to fail during user-profile lookup. No production frontend promotion occurred. The previous scope-only diagnosis was insufficient.

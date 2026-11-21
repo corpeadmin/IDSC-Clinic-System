@@ -1,12 +1,10 @@
-# Add JWT recovery and deploy the Clinic school demo
+# Record the verified automated Clinic release
 
-Login issues revocable JWTs while preserving session compatibility. Recovery validates the registered email and sends an expiring, single-use link; successful reset revokes sessions and JWTs. Owner/Admin/Staff permissions and the verified business API contract are preserved.
+The Clinic is deployed at https://idsc-clinic-management.vercel.app. Main commit `f43769b` passed all 13 jobs in [run 44891807127](https://github.com/microwaveTuesday/IDSC-Clinic-System/actions/runs/44891807127), including the protected production release. Render publishes the tested SHA; Vercel stages, checks and promotes the exact frontend deployment through the project-scoped API.
 
-The cloud profile serves the frontend on Vercel, the Docker API on Render Free and persistent Clinic data on Supabase PostgreSQL. Brevo HTTPS supports recovery without SMTP. Startup provisions the first Owner before public serving, certificate verification stays enabled, and a test-gated main release workflow is prepared.
+Independent checks passed for Owner login, JWT dashboard access, Swagger, public health and static assets. The live API matches all 50 paths and 77 operations in the committed contract. Documentation reconciles earlier pending setup language with the successful release and preserves dated failure diagnostics. This documentation follow-up changes no application code or API contract.
 
-Validation: all 12 quality jobs passed for deployed code commit `4645e34`, including both databases, container, browser, Postman and contract checks. Staged and public frontend/API checks passed; hosted Owner login and JWT dashboard passed. Brevo accepted a hosted reset email; the user confirmed inbox receipt and that its link opens the hosted reset form. Completed hosted reset remains unverified. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
-
-Live demo: https://idsc-clinic-management.vercel.app. The initial release was manual after CI; main is unchanged. Production environment configuration and an actual main release remain pending, along with a real provider gateway call. Hosted Registrar/Inventory remain process-local mocks; free backend cold starts apply. No credentials or recovery links are included.
+Real Registrar/Inventory gateway integration remains pending because the partner systems are unfinished. Hosted mocks demonstrate workflows but do not satisfy the real integration requirement. The user confirmed recovery email receipt and the hosted reset form; completed hosted password reset remains unverified. See [RELEASE-EVIDENCE.md](RELEASE-EVIDENCE.md) for evidence and operational limits.
 
 ## Historical verification PR description
 

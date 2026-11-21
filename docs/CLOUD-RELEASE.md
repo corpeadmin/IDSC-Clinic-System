@@ -73,4 +73,4 @@ For Inventory mutations also obtain idempotency-key rules, stable transaction ID
 
 ## Current release handoff
 
-Temporary INITIAL_OWNER_* variables were removed from Render and a configuration restart retained the existing Owner. Exact non-secret production targets and administrator steps are in [RELEASE-HANDOFF.md](RELEASE-HANDOFF.md). The repository has since transferred to microwaveTuesday, which now has administrator access. The production environment and target variables are configured; deployment secrets and the first main release remain pending.
+Temporary INITIAL_OWNER_* variables were removed from Render and a configuration restart retained the existing Owner. Exact non-secret production targets and administrator steps are in [RELEASE-HANDOFF.md](RELEASE-HANDOFF.md). The repository has since transferred to microwaveTuesday, which now has administrator access. The production environment, target variables and three deployment secrets are configured. The operator approved commit f43769b and all 13 jobs, including the complete production release, succeeded. See [RELEASE-EVIDENCE.md](RELEASE-EVIDENCE.md) for the exact run and independent checks.
