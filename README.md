@@ -1,6 +1,6 @@
 # IDSC Clinic Management System
 
-Cloud deployment preparation: [hosted release setup](docs/CLOUD-RELEASE.md). The free-hosting path uses HTTPS email delivery; live hosting verification is still pending.
+Live school demo: [Clinic website](https://idsc-clinic-management.vercel.app), [Swagger UI](https://idsc-clinic-management.vercel.app/docs), and [health](https://idsc-clinic-management.vercel.app/health). Hosted on Vercel and Render Free with Supabase PostgreSQL; cloud recovery uses Brevo HTTPS. See [hosted release setup and limits](docs/CLOUD-RELEASE.md). Real Registrar/Inventory gateway integration and the first main-branch automated release remain outstanding.
 
 Forgotten-password recovery: [Gmail setup and recovery API](docs/PASSWORD-RECOVERY.md). The email must already be saved on the account; Gmail delivery and reset were confirmed by the user on 20 November 2026. Each installation requires its own private sender configuration. Unknown emails show an error.
 

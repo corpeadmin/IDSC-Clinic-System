@@ -15,7 +15,7 @@ class NoRedirect(HTTPRedirectHandler):
 
 def check(origin):
     origin = https_origin(origin)
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "*/*"}
     bypass = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")
     if bypass:
         headers["x-vercel-protection-bypass"] = bypass

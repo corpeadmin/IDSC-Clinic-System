@@ -1,5 +1,20 @@
 # Current validation record
 
+## Public cloud deployment - 21 November 2026
+
+Deployed tested commit `4645e34` from `integration/final-jwt` after [all 12 quality jobs passed](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44865005481). Render service `srv-dc0hvj3m8hqs73ej4cd0` reports Live; Vercel deployment `dpl_HFU5vLRHPy1tvWnHgaSuRyoARcTS` was staged, checked, then promoted. This was a manual initial release; main is unchanged and the production Actions job has not run.
+
+- Public website: https://idsc-clinic-management.vercel.app
+- Swagger: https://idsc-clinic-management.vercel.app/docs
+- Backend health: https://idsc-clinic-api.onrender.com/health
+- Supabase password authentication and certificate/hostname verification passed. Render completed Django migrations and provisioned the first Owner before listening.
+- Public frontend, same-origin health, database-backed setup, no-store API, schema and Swagger passed. Anonymous dashboard returns 401; Owner login and JWT dashboard return 200. Public registration is closed.
+- Collected Django admin CSS returns 200 directly from Render. Browser visibly shows the public Clinic login page.
+- Hosted password-reset request returned 200 through Brevo. Inbox receipt and link redemption await user confirmation; this request did not change the password.
+- The smoke checker now accepts both HTML and API response types, avoiding a false 406 on Swagger. No backend contract change.
+
+Remaining: remove INITIAL_OWNER_* hosting bootstrap values after verified login; configure protected production CI variables/secrets with the repository administrator and validate a real push-to-main release; verify hosted reset redemption and database restart persistence; implement one agreed real provider gateway call. Registrar/Inventory are still process-local mocks on this free profile. Free backend cold starts remain possible.
+
 ## Cloud preparation - 21 November 2026
 
 The free-hosting profile, Brevo HTTPS mail transport, hosted Owner provisioning, PostgreSQL TLS settings, optional static middleware, frontend routing package and test-gated release job are prepared. See [CLOUD-RELEASE.md](CLOUD-RELEASE.md). The public website and real Brevo inbox delivery are not yet verified.

@@ -1,12 +1,12 @@
-# Add JWT login and Gmail password recovery
+# Add JWT recovery and deploy the Clinic school demo
 
-Current local head: `integration/final-jwt`; base: `submission/clinic-final-v2` at `ad361f1`. Implementation commit `2267508` has been pushed to `corpeadmin/IDSC-Clinic-System`; All 12 jobs passed for code commit `c6a3302`: [successful run](https://github.com/corpeadmin/IDSC-Clinic-System/actions/runs/44762774676).
+Login issues revocable JWTs while preserving session compatibility. Recovery validates the registered email and sends an expiring, single-use link; successful reset revokes sessions and JWTs. Owner/Admin/Staff permissions and the verified business API contract are preserved.
 
-Login now issues revocable JWT access tokens while preserving session compatibility. The browser holds tokens in memory and renews through its CSRF-protected session. Forgot password opens an email form and sends a 30-minute, single-use reset link to the saved recovery address. Unknown emails show a 404 error; mail failures show 503. Resetting the password revokes existing sessions and JWTs. The OpenAPI contract, SMTP example configuration, deployment environment wiring and browser/backend regressions are updated.
+The cloud profile serves the frontend on Vercel, the Docker API on Render Free and persistent Clinic data on Supabase PostgreSQL. Brevo HTTPS supports recovery without SMTP. Startup provisions the first Owner before public serving, certificate verification stays enabled, and a test-gated main release workflow is prepared.
 
-Validation: 340 of 342 backend tests passed with a test-only fast hasher; two PostgreSQL-only tests skipped. All 18 recovery tests passed with configured hashing. Browser recovery, frontend lint/build, static/runtime contract equality and Redocly lint passed. Real Gmail authentication/submission succeeded and the user confirmed receipt and reset. No credentials, recipient addresses or reset tokens are included in this description. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
+Validation: all 12 quality jobs passed for deployed code commit `4645e34`, including both databases, container, browser, Postman and contract checks. Staged and public frontend/API checks passed; hosted Owner login and JWT dashboard passed. Brevo accepted a hosted reset email; inbox receipt/redemption await user confirmation. See [CURRENT-VALIDATION.md](CURRENT-VALIDATION.md).
 
-Public hosting and a real institutional API gateway call remain unverified. All 12 GitHub Actions jobs passed, including SQLite/PostgreSQL tests, backup/restore, browser workflows, dependency audits, Postman, contract checks and private HTTPS container smoke. Compatible development dependency updates and containerized PostgreSQL 16 backup clients resolved the initial CI failures. Deployment after tests on main remains outstanding.
+Live demo: https://idsc-clinic-management.vercel.app. The initial release was manual after CI; main is unchanged. Production environment configuration and an actual main release remain pending, along with a real provider gateway call. Hosted Registrar/Inventory remain process-local mocks; free backend cold starts apply. No credentials or recovery links are included.
 
 ## Historical verification PR description
 

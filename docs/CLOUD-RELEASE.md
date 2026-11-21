@@ -1,10 +1,10 @@
 # Hosted release setup
 
-Prepared 21 November 2026 on `integration/final-jwt`. Hosting targets and live delivery still need provider configuration and verification. This document does not claim the site is deployed.
+Deployed 21 November 2026 from tested commit `4645e34` on `integration/final-jwt`. Public website: https://idsc-clinic-management.vercel.app; backend: https://idsc-clinic-api.onrender.com. Initial deployment was performed manually after all 12 quality jobs passed, not by a push to main. Main remains unchanged.
 
 ## Chosen school-demo topology
 
-Browser -> Vercel same-origin routes -> Render Free Docker backend -> Supabase PostgreSQL. Password reset uses Brevo's HTTPS transactional API. Gmail SMTP remains available locally and was previously inbox-tested. The Brevo transport has automated tests; a real Brevo sender and inbox have not yet been tested.
+Browser -> Vercel same-origin routes -> Render Free Docker backend -> Supabase PostgreSQL. Password reset uses Brevo's HTTPS transactional API. Gmail SMTP remains available locally and was previously inbox-tested. The verified Brevo sender accepted a real reset request from the hosted API (HTTP 200); recipient inbox receipt and hosted reset redemption still await user confirmation.
 
 Render Free blocks outbound SMTP on 465/587, has an ephemeral filesystem, and sleeps after 15 minutes of inactivity. Cold starts can take about a minute. Do not put Clinic data or a durable mock Inventory ledger on its local disk. This profile persists Clinic records/accounts in PostgreSQL; Registrar and Inventory remain explicitly process-local mocks. Run one instance/worker. Free hosting is suitable for the synthetic school demo; immediate availability and institutional production operation are not established. See [Render limits](https://render.com/docs/free).
 
